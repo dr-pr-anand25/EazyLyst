@@ -1,6 +1,6 @@
 {
   "name": "eazylyst",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "description": "List maker software with drag-and-drop categorization",
   "main": "main.js",
   "scripts": {
