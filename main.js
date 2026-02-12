@@ -7,6 +7,7 @@ remoteMain.initialize();
 let dropTargetWindow = null;
 let panelWindow = null;
 let collectedItems = [];
+let itemIdCounter = 1;
 
 function createDropTargetWindow() {
   const primaryDisplay = screen.getPrimaryDisplay();
@@ -24,8 +25,7 @@ function createDropTargetWindow() {
     skipTaskbar: true,
     webPreferences: {
       nodeIntegration: true,
-      contextIsolation: false,
-      enableRemoteModule: true
+      contextIsolation: false
     }
   });
 
@@ -92,7 +92,7 @@ function categorizeItem(text) {
   // Check for Name (2-3 capitalized words)
   const words = trimmed.split(/\s+/);
   if (words.length >= 2 && words.length <= 3) {
-    const allCapitalized = words.every(word => /^[A-Z][a-z]*/.test(word));
+    const allCapitalized = words.every(word => /^[A-Z][a-z]+$/.test(word));
     if (allCapitalized) {
       return 'Name';
     }
@@ -106,7 +106,7 @@ function categorizeItem(text) {
 ipcMain.on('item-dropped', (event, text) => {
   const category = categorizeItem(text);
   const item = {
-    id: Date.now(),
+    id: itemIdCounter++,
     value: text,
     category: category,
     timestamp: new Date().toISOString()

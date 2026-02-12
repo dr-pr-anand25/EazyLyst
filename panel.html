@@ -499,8 +499,7 @@
       const csv = [headers.join(','), ...rows].join('\n');
 
       // Save file
-      const { remote } = require('electron');
-      const { dialog } = remote || require('@electron/remote');
+      const { dialog } = require('@electron/remote');
       
       dialog.showSaveDialog({
         title: 'Export CSV',

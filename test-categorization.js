@@ -27,7 +27,7 @@ function categorizeItem(text) {
   // Check for Name (2-3 capitalized words)
   const words = trimmed.split(/\s+/);
   if (words.length >= 2 && words.length <= 3) {
-    const allCapitalized = words.every(word => /^[A-Z][a-z]*/.test(word));
+    const allCapitalized = words.every(word => /^[A-Z][a-z]+$/.test(word));
     if (allCapitalized) {
       return 'Name';
     }
