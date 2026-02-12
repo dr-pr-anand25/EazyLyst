@@ -91,7 +91,13 @@
         if (urlMatch) {
           droppedText = urlMatch[1];
         } else {
-          droppedText = e.dataTransfer.getData('text/plain') || html.replace(/<[^>]*>/g, '');
+          // Use text/plain if available, otherwise create a temporary DOM element to safely extract text
+          droppedText = e.dataTransfer.getData('text/plain');
+          if (!droppedText) {
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = html;
+            droppedText = tempDiv.textContent || tempDiv.innerText || '';
+          }
         }
       }
 
