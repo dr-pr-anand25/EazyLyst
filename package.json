@@ -1,0 +1,15 @@
+{
+  "name": "eazylyst",
+  "version": "1.0.0",
+  "description": "A lightweight desktop app for quickly collecting and categorizing text and links via drag-and-drop.",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "test": "node test/classify.test.js"
+  },
+  "keywords": ["electron", "drag-drop", "categorize", "clipboard"],
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^28.0.0"
+  }
+}

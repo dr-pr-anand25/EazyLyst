@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    height: 100%;
+    font-family: system-ui, -apple-system, sans-serif;
+    background: #1e1e2e;
+    color: #cdd6f4;
+    overflow-y: auto;
+  }
+
+  /* Title bar */
+  #titlebar {
+    -webkit-app-region: drag;
+    background: #181825;
+    padding: 10px 14px;
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    border-bottom: 1px solid #313244;
+  }
+
+  /* Sections */
+  .section {
+    margin: 10px 8px;
+    background: #181825;
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  .section-header {
+    display: flex;
+    align-items: center;
+    padding: 8px 12px;
+    background: #313244;
+    cursor: pointer;
+  }
+  .section-header .label {
+    flex: 1;
+    font-weight: 600;
+    font-size: 13px;
+  }
+  .section-header .label input {
+    background: transparent;
+    border: none;
+    color: inherit;
+    font: inherit;
+    width: 100%;
+    outline: none;
+    cursor: text;
+  }
+  .section-header .count {
+    font-size: 11px;
+    color: #a6adc8;
+    margin-left: 8px;
+  }
+  .section-items {
+    max-height: 300px;
+    overflow-y: auto;
+  }
+  .item {
+    padding: 6px 12px;
+    font-size: 12px;
+    word-break: break-all;
+    border-bottom: 1px solid #313244;
+  }
+  .item:last-child { border-bottom: none; }
+
+  /* Buttons */
+  #controls {
+    display: flex;
+    gap: 6px;
+    padding: 10px 8px;
+    flex-wrap: wrap;
+  }
+  button {
+    flex: 1;
+    min-width: 80px;
+    padding: 8px 0;
+    border: none;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    color: #1e1e2e;
+  }
+  #btnSave   { background: #a6e3a1; }
+  #btnDiscard{ background: #f38ba8; }
+  #btnToggle { background: #89b4fa; }
+
+  /* Export format selector */
+  #formatRow {
+    display: none;
+    padding: 6px 8px;
+    gap: 6px;
+    flex-direction: column;
+  }
+  #formatRow.show { display: flex; }
+  #formatRow label { font-size: 12px; margin-bottom: 2px; }
+  #formatRow select {
+    width: 100%;
+    padding: 6px;
+    border-radius: 4px;
+    border: 1px solid #313244;
+    background: #181825;
+    color: #cdd6f4;
+    font-size: 12px;
+  }
+  #btnConfirmSave {
+    margin-top: 4px;
+    padding: 8px;
+    background: #a6e3a1;
+    color: #1e1e2e;
+    border: none;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    font-size: 12px;
+  }
+</style>
+</head>
+<body>
+<div id="titlebar">EazyLyst</div>
+
+<div id="sections"></div>
+
+<div id="controls">
+  <button id="btnSave">Save CSV</button>
+  <button id="btnDiscard">Discard</button>
+  <button id="btnToggle">Toggle Circle</button>
+</div>
+
+<div id="formatRow">
+  <label for="exportFormat">Export format:</label>
+  <select id="exportFormat">
+    <option value="cat-val">Category,Value (default)</option>
+    <option value="val-cat">Value,Category</option>
+    <option value="grouped">Grouped with blank lines</option>
+    <option value="id">With ID column</option>
+    <option value="timestamp">With Timestamp column</option>
+    <option value="pipe">Category row with pipe-separated values</option>
+  </select>
+  <button id="btnConfirmSave">Export</button>
+</div>
+
+<script>
+  // ── Classification (mirrors classify.js) ──
+  const BUSINESS_SUFFIXES = ['inc','llc','ltd','corp','company','co','plc'];
+  const BUSINESS_BLACKLIST = ['solutions','group','systems','holdings','partners','ventures','bank','financial','services','industries','enterprises'];
+
+  function classify(value) {
+    if (typeof value !== 'string') return 'Business';
+    const t = value.trim();
+    if (!t) return 'Business';
+    if (/https?:\/\//i.test(t) || /^www\./i.test(t)) return 'Links';
+    const lower = t.toLowerCase();
+    for (const w of BUSINESS_BLACKLIST) { if (new RegExp('\\b'+w+'\\b','i').test(lower)) return 'Business'; }
+    for (const s of BUSINESS_SUFFIXES) { if (new RegExp('\\b'+s+'\\b','i').test(lower)) return 'Business'; }
+    const words = t.split(/\s+/);
+    if (words.length >= 2 && words.length <= 3 && words.every(w => /^[A-Z][a-z]+$/.test(w))) return 'Name';
+    return 'Business';
+  }
+
+  // ── State ──
+  const categories = ['Name', 'Business', 'Links'];
+  const labels = { Name: 'Name', Business: 'Business', Links: 'Links' };
+  const items = { Name: [], Business: [], Links: [] };
+
+  function render() {
+    const container = document.getElementById('sections');
+    container.innerHTML = '';
+    for (const cat of categories) {
+      const sec = document.createElement('div');
+      sec.className = 'section';
+
+      const header = document.createElement('div');
+      header.className = 'section-header';
+
+      const labelSpan = document.createElement('span');
+      labelSpan.className = 'label';
+      const inp = document.createElement('input');
+      inp.value = labels[cat];
+      inp.addEventListener('change', () => { labels[cat] = inp.value || cat; });
+      labelSpan.appendChild(inp);
+
+      const countSpan = document.createElement('span');
+      countSpan.className = 'count';
+      countSpan.textContent = items[cat].length;
+
+      header.appendChild(labelSpan);
+      header.appendChild(countSpan);
+      sec.appendChild(header);
+
+      const list = document.createElement('div');
+      list.className = 'section-items';
+      for (const val of items[cat]) {
+        const d = document.createElement('div');
+        d.className = 'item';
+        d.textContent = val;
+        list.appendChild(d);
+      }
+      sec.appendChild(list);
+      container.appendChild(sec);
+    }
+  }
+
+  render();
+
+  // ── IPC: receive items from overlay ──
+  window.eazy.onAddItem((text) => {
+    const cat = classify(text);
+    items[cat].push(text);
+    render();
+  });
+
+  // ── Controls ──
+  document.getElementById('btnToggle').addEventListener('click', () => window.eazy.toggleCircle());
+
+  document.getElementById('btnDiscard').addEventListener('click', () => {
+    for (const cat of categories) items[cat] = [];
+    render();
+  });
+
+  document.getElementById('btnSave').addEventListener('click', () => {
+    document.getElementById('formatRow').classList.toggle('show');
+  });
+
+  document.getElementById('btnConfirmSave').addEventListener('click', async () => {
+    const fmt = document.getElementById('exportFormat').value;
+    const csv = buildCSV(fmt);
+    if (!csv) return;
+    await window.eazy.saveCSV(csv);
+    document.getElementById('formatRow').classList.remove('show');
+  });
+
+  function escapeCSV(v) {
+    if (/[,"\n]/.test(v)) return '"' + v.replace(/"/g, '""') + '"';
+    return v;
+  }
+
+  function buildCSV(fmt) {
+    const rows = [];
+    const allItems = [];
+    for (const cat of categories) {
+      for (const v of items[cat]) {
+        allItems.push({ category: labels[cat], value: v });
+      }
+    }
+    if (allItems.length === 0) return null;
+
+    switch (fmt) {
+      case 'cat-val':
+        rows.push('Category,Value');
+        allItems.forEach(i => rows.push(escapeCSV(i.category) + ',' + escapeCSV(i.value)));
+        break;
+      case 'val-cat':
+        rows.push('Value,Category');
+        allItems.forEach(i => rows.push(escapeCSV(i.value) + ',' + escapeCSV(i.category)));
+        break;
+      case 'grouped':
+        for (const cat of categories) {
+          if (items[cat].length === 0) continue;
+          rows.push(labels[cat]);
+          items[cat].forEach(v => rows.push(escapeCSV(v)));
+          rows.push('');
+        }
+        break;
+      case 'id':
+        rows.push('ID,Category,Value');
+        allItems.forEach((i, idx) => rows.push((idx + 1) + ',' + escapeCSV(i.category) + ',' + escapeCSV(i.value)));
+        break;
+      case 'timestamp':
+        rows.push('Timestamp,Category,Value');
+        allItems.forEach(i => rows.push(new Date().toISOString() + ',' + escapeCSV(i.category) + ',' + escapeCSV(i.value)));
+        break;
+      case 'pipe':
+        for (const cat of categories) {
+          if (items[cat].length === 0) continue;
+          rows.push(labels[cat] + ',' + items[cat].join('|'));
+        }
+        break;
+    }
+    return rows.join('\n');
+  }
+</script>
+</body>
+</html>
