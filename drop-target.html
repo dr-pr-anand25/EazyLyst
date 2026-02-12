@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'unsafe-inline'">
+  <title>Drop Target</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      width: 150px;
+      height: 150px;
+      overflow: hidden;
+      background: transparent;
+      -webkit-app-region: drag;
+    }
+
+    #drop-circle {
+      width: 150px;
+      height: 150px;
+      border-radius: 50%;
+      background: rgba(70, 130, 255, 0.5);
+      border: 3px dashed rgba(255, 255, 255, 0.8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-family: Arial, sans-serif;
+      font-size: 14px;
+      font-weight: bold;
+      text-align: center;
+      transition: all 0.3s ease;
+      cursor: move;
+      -webkit-app-region: no-drag;
+    }
+
+    #drop-circle.drag-over {
+      background: rgba(70, 200, 130, 0.7);
+      border-color: rgba(255, 255, 255, 1);
+      transform: scale(1.1);
+    }
+
+    #drop-text {
+      pointer-events: none;
+      padding: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div id="drop-circle">
+    <div id="drop-text">Drop Here</div>
+  </div>
+
+  <script>
+    const { ipcRenderer } = require('electron');
+    const dropCircle = document.getElementById('drop-circle');
+
+    // Prevent default drag behaviors
+    document.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      dropCircle.classList.add('drag-over');
+    });
+
+    document.addEventListener('dragleave', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      dropCircle.classList.remove('drag-over');
+    });
+
+    document.addEventListener('drop', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      dropCircle.classList.remove('drag-over');
+
+      // Get dropped text or URL
+      let droppedText = '';
+      
+      if (e.dataTransfer.types.includes('text/uri-list')) {
+        droppedText = e.dataTransfer.getData('text/uri-list');
+      } else if (e.dataTransfer.types.includes('text/plain')) {
+        droppedText = e.dataTransfer.getData('text/plain');
+      } else if (e.dataTransfer.types.includes('text/html')) {
+        const html = e.dataTransfer.getData('text/html');
+        // Try to extract URL from HTML
+        const urlMatch = html.match(/href=["']([^"']+)["']/);
+        if (urlMatch) {
+          droppedText = urlMatch[1];
+        } else {
+          // Use text/plain if available, otherwise create a temporary DOM element to safely extract text
+          droppedText = e.dataTransfer.getData('text/plain');
+          if (!droppedText) {
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = html;
+            droppedText = tempDiv.textContent || tempDiv.innerText || '';
+          }
+        }
+      }
+
+      if (droppedText) {
+        ipcRenderer.send('item-dropped', droppedText.trim());
+        
+        // Visual feedback
+        dropCircle.style.background = 'rgba(70, 200, 130, 0.9)';
+        setTimeout(() => {
+          dropCircle.style.background = 'rgba(70, 130, 255, 0.5)';
+        }, 300);
+      }
+    });
+
+    // Handle dragenter event
+    dropCircle.addEventListener('dragenter', (e) => {
+      e.preventDefault();
+      dropCircle.classList.add('drag-over');
+    });
+  </script>
+</body>
+</html>

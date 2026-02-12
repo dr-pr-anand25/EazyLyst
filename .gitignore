@@ -1,6 +1,5 @@
 node_modules/
 dist/
-out/
-*.csv
+build/
+*.log
 .DS_Store
-Thumbs.db

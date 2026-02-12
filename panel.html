@@ -1,290 +1,523 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-<meta charset="UTF-8">
-<style>
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  html, body {
-    height: 100%;
-    font-family: system-ui, -apple-system, sans-serif;
-    background: #1e1e2e;
-    color: #cdd6f4;
-    overflow-y: auto;
-  }
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'unsafe-inline'">
+  <title>EazyLyst Panel</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
 
-  /* Title bar */
-  #titlebar {
-    -webkit-app-region: drag;
-    background: #181825;
-    padding: 10px 14px;
-    font-size: 16px;
-    font-weight: 700;
-    letter-spacing: 0.5px;
-    border-bottom: 1px solid #313244;
-  }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: #f5f5f5;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
 
-  /* Sections */
-  .section {
-    margin: 10px 8px;
-    background: #181825;
-    border-radius: 8px;
-    overflow: hidden;
-  }
-  .section-header {
-    display: flex;
-    align-items: center;
-    padding: 8px 12px;
-    background: #313244;
-    cursor: pointer;
-  }
-  .section-header .label {
-    flex: 1;
-    font-weight: 600;
-    font-size: 13px;
-  }
-  .section-header .label input {
-    background: transparent;
-    border: none;
-    color: inherit;
-    font: inherit;
-    width: 100%;
-    outline: none;
-    cursor: text;
-  }
-  .section-header .count {
-    font-size: 11px;
-    color: #a6adc8;
-    margin-left: 8px;
-  }
-  .section-items {
-    max-height: 300px;
-    overflow-y: auto;
-  }
-  .item {
-    padding: 6px 12px;
-    font-size: 12px;
-    word-break: break-all;
-    border-bottom: 1px solid #313244;
-  }
-  .item:last-child { border-bottom: none; }
+    header {
+      background: #4682ff;
+      color: white;
+      padding: 15px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
 
-  /* Buttons */
-  #controls {
-    display: flex;
-    gap: 6px;
-    padding: 10px 8px;
-    flex-wrap: wrap;
-  }
-  button {
-    flex: 1;
-    min-width: 80px;
-    padding: 8px 0;
-    border: none;
-    border-radius: 6px;
-    font-size: 12px;
-    font-weight: 600;
-    cursor: pointer;
-    color: #1e1e2e;
-  }
-  #btnSave   { background: #a6e3a1; }
-  #btnDiscard{ background: #f38ba8; }
-  #btnToggle { background: #89b4fa; }
+    h1 {
+      font-size: 20px;
+      margin-bottom: 10px;
+    }
 
-  /* Export format selector */
-  #formatRow {
-    display: none;
-    padding: 6px 8px;
-    gap: 6px;
-    flex-direction: column;
-  }
-  #formatRow.show { display: flex; }
-  #formatRow label { font-size: 12px; margin-bottom: 2px; }
-  #formatRow select {
-    width: 100%;
-    padding: 6px;
-    border-radius: 4px;
-    border: 1px solid #313244;
-    background: #181825;
-    color: #cdd6f4;
-    font-size: 12px;
-  }
-  #btnConfirmSave {
-    margin-top: 4px;
-    padding: 8px;
-    background: #a6e3a1;
-    color: #1e1e2e;
-    border: none;
-    border-radius: 6px;
-    font-weight: 600;
-    cursor: pointer;
-    font-size: 12px;
-  }
-</style>
+    .controls {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    button {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: background 0.2s;
+    }
+
+    .btn-primary {
+      background: white;
+      color: #4682ff;
+    }
+
+    .btn-primary:hover {
+      background: #e6e6e6;
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.2);
+      color: white;
+    }
+
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.3);
+    }
+
+    #items-container {
+      flex: 1;
+      overflow-y: auto;
+      padding: 15px;
+    }
+
+    .item {
+      background: white;
+      border-radius: 8px;
+      padding: 15px;
+      margin-bottom: 10px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      transition: transform 0.2s;
+    }
+
+    .item:hover {
+      transform: translateX(-2px);
+      box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+    }
+
+    .item-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    .category-badge {
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: bold;
+      text-transform: uppercase;
+    }
+
+    .category-links {
+      background: #4682ff;
+      color: white;
+    }
+
+    .category-business {
+      background: #ff9500;
+      color: white;
+    }
+
+    .category-name {
+      background: #34c759;
+      color: white;
+    }
+
+    .item-actions {
+      display: flex;
+      gap: 5px;
+    }
+
+    .btn-small {
+      padding: 4px 8px;
+      font-size: 12px;
+      background: #e0e0e0;
+      color: #333;
+    }
+
+    .btn-small:hover {
+      background: #d0d0d0;
+    }
+
+    .btn-danger {
+      background: #ff3b30;
+      color: white;
+    }
+
+    .btn-danger:hover {
+      background: #cc2f26;
+    }
+
+    .item-value {
+      color: #333;
+      word-wrap: break-word;
+      margin-top: 8px;
+      font-size: 14px;
+    }
+
+    .item-value.editing {
+      display: none;
+    }
+
+    .item-input {
+      display: none;
+      width: 100%;
+      padding: 8px;
+      border: 2px solid #4682ff;
+      border-radius: 4px;
+      font-size: 14px;
+      margin-top: 8px;
+    }
+
+    .item-input.active {
+      display: block;
+    }
+
+    .item-timestamp {
+      font-size: 11px;
+      color: #999;
+      margin-top: 8px;
+    }
+
+    .export-modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.5);
+      justify-content: center;
+      align-items: center;
+    }
+
+    .export-modal.active {
+      display: flex;
+    }
+
+    .modal-content {
+      background: white;
+      border-radius: 8px;
+      padding: 20px;
+      max-width: 400px;
+      width: 90%;
+    }
+
+    .modal-header {
+      font-size: 18px;
+      font-weight: bold;
+      margin-bottom: 15px;
+    }
+
+    .export-options {
+      margin: 15px 0;
+    }
+
+    .export-option {
+      display: flex;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    .export-option input[type="checkbox"] {
+      margin-right: 8px;
+    }
+
+    .modal-buttons {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+      margin-top: 20px;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 40px;
+      color: #999;
+    }
+
+    .empty-state-icon {
+      font-size: 48px;
+      margin-bottom: 10px;
+    }
+  </style>
 </head>
 <body>
-<div id="titlebar">EazyLyst</div>
+  <header>
+    <h1>EazyLyst</h1>
+    <div class="controls">
+      <button id="toggleOverlay" class="btn-secondary">Hide Overlay</button>
+      <button id="exportBtn" class="btn-primary">Export CSV</button>
+    </div>
+  </header>
 
-<div id="sections"></div>
+  <div id="items-container">
+    <div class="empty-state">
+      <div class="empty-state-icon">📋</div>
+      <p>Drop items into the circular overlay to start collecting</p>
+    </div>
+  </div>
 
-<div id="controls">
-  <button id="btnSave">Save CSV</button>
-  <button id="btnDiscard">Discard</button>
-  <button id="btnToggle">Toggle Circle</button>
-</div>
+  <!-- Export Modal -->
+  <div id="exportModal" class="export-modal">
+    <div class="modal-content">
+      <div class="modal-header">Export Options</div>
+      <p>Select columns to include in your CSV export:</p>
+      <div class="export-options">
+        <div class="export-option">
+          <input type="checkbox" id="opt-category" checked disabled>
+          <label for="opt-category">Category (required)</label>
+        </div>
+        <div class="export-option">
+          <input type="checkbox" id="opt-value" checked disabled>
+          <label for="opt-value">Value (required)</label>
+        </div>
+        <div class="export-option">
+          <input type="checkbox" id="opt-timestamp" checked>
+          <label for="opt-timestamp">Timestamp</label>
+        </div>
+        <div class="export-option">
+          <input type="checkbox" id="opt-id" checked>
+          <label for="opt-id">ID</label>
+        </div>
+        <div class="export-option">
+          <input type="checkbox" id="opt-length" checked>
+          <label for="opt-length">Value Length</label>
+        </div>
+        <div class="export-option">
+          <input type="checkbox" id="opt-date-only" checked>
+          <label for="opt-date-only">Date Only</label>
+        </div>
+        <div class="export-option">
+          <input type="checkbox" id="opt-time-only" checked>
+          <label for="opt-time-only">Time Only</label>
+        </div>
+      </div>
+      <div class="modal-buttons">
+        <button id="cancelExport" class="btn-small">Cancel</button>
+        <button id="confirmExport" class="btn-primary">Export</button>
+      </div>
+    </div>
+  </div>
 
-<div id="formatRow">
-  <label for="exportFormat">Export format:</label>
-  <select id="exportFormat">
-    <option value="cat-val">Category,Value (default)</option>
-    <option value="val-cat">Value,Category</option>
-    <option value="grouped">Grouped with blank lines</option>
-    <option value="id">With ID column</option>
-    <option value="timestamp">With Timestamp column</option>
-    <option value="pipe">Category row with pipe-separated values</option>
-  </select>
-  <button id="btnConfirmSave">Export</button>
-</div>
+  <script>
+    const { ipcRenderer } = require('electron');
+    const fs = require('fs');
+    const path = require('path');
+    const { dialog } = require('electron').remote || require('@electron/remote');
 
-<script>
-  // ── Classification (mirrors classify.js) ──
-  const BUSINESS_SUFFIXES = ['inc','llc','ltd','corp','company','co','plc'];
-  const BUSINESS_BLACKLIST = ['solutions','group','systems','holdings','partners','ventures','bank','financial','services','industries','enterprises'];
+    let items = [];
+    let overlayVisible = true;
 
-  function classify(value) {
-    if (typeof value !== 'string') return 'Business';
-    const t = value.trim();
-    if (!t) return 'Business';
-    if (/https?:\/\//i.test(t) || /^www\./i.test(t)) return 'Links';
-    const lower = t.toLowerCase();
-    for (const w of BUSINESS_BLACKLIST) { if (new RegExp('\\b'+w+'\\b','i').test(lower)) return 'Business'; }
-    for (const s of BUSINESS_SUFFIXES) { if (new RegExp('\\b'+s+'\\b','i').test(lower)) return 'Business'; }
-    const words = t.split(/\s+/);
-    if (words.length >= 2 && words.length <= 3 && words.every(w => /^[A-Z][a-z]+$/.test(w))) return 'Name';
-    return 'Business';
-  }
+    const itemsContainer = document.getElementById('items-container');
+    const toggleOverlayBtn = document.getElementById('toggleOverlay');
+    const exportBtn = document.getElementById('exportBtn');
+    const exportModal = document.getElementById('exportModal');
+    const cancelExportBtn = document.getElementById('cancelExport');
+    const confirmExportBtn = document.getElementById('confirmExport');
 
-  // ── State ──
-  const categories = ['Name', 'Business', 'Links'];
-  const labels = { Name: 'Name', Business: 'Business', Links: 'Links' };
-  // Each entry: { value: string, ts: string }
-  const items = { Name: [], Business: [], Links: [] };
+    // Request all items on load
+    ipcRenderer.send('get-all-items');
 
-  function render() {
-    const container = document.getElementById('sections');
-    container.innerHTML = '';
-    for (const cat of categories) {
-      const sec = document.createElement('div');
-      sec.className = 'section';
+    // Listen for all items
+    ipcRenderer.on('all-items', (event, allItems) => {
+      items = allItems;
+      renderItems();
+    });
 
-      const header = document.createElement('div');
-      header.className = 'section-header';
+    // Listen for new items
+    ipcRenderer.on('new-item', (event, item) => {
+      items.push(item);
+      renderItems();
+    });
 
-      const labelSpan = document.createElement('span');
-      labelSpan.className = 'label';
-      const inp = document.createElement('input');
-      inp.value = labels[cat];
-      inp.addEventListener('change', () => { labels[cat] = inp.value || cat; });
-      labelSpan.appendChild(inp);
-
-      const countSpan = document.createElement('span');
-      countSpan.className = 'count';
-      countSpan.textContent = items[cat].length;
-
-      header.appendChild(labelSpan);
-      header.appendChild(countSpan);
-      sec.appendChild(header);
-
-      const list = document.createElement('div');
-      list.className = 'section-items';
-      for (const entry of items[cat]) {
-        const d = document.createElement('div');
-        d.className = 'item';
-        d.textContent = entry.value;
-        list.appendChild(d);
+    // Listen for updated items
+    ipcRenderer.on('item-updated', (event, updatedItem) => {
+      const index = items.findIndex(item => item.id === updatedItem.id);
+      if (index !== -1) {
+        items[index] = updatedItem;
+        renderItems();
       }
-      sec.appendChild(list);
-      container.appendChild(sec);
+    });
+
+    // Listen for deleted items
+    ipcRenderer.on('item-deleted', (event, itemId) => {
+      items = items.filter(item => item.id !== itemId);
+      renderItems();
+    });
+
+    function renderItems() {
+      if (items.length === 0) {
+        itemsContainer.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-state-icon">📋</div>
+            <p>Drop items into the circular overlay to start collecting</p>
+          </div>
+        `;
+        return;
+      }
+
+      itemsContainer.innerHTML = items.map(item => `
+        <div class="item" data-id="${item.id}">
+          <div class="item-header">
+            <span class="category-badge category-${item.category.toLowerCase()}">${item.category}</span>
+            <div class="item-actions">
+              <button class="btn-small btn-rename" data-id="${item.id}">Rename</button>
+              <button class="btn-small btn-danger btn-delete" data-id="${item.id}">Discard</button>
+            </div>
+          </div>
+          <div class="item-value" data-id="${item.id}">${escapeHtml(item.value)}</div>
+          <input type="text" class="item-input" data-id="${item.id}" value="${escapeHtml(item.value)}">
+          <div class="item-timestamp">${formatTimestamp(item.timestamp)}</div>
+        </div>
+      `).join('');
+
+      // Add event listeners
+      document.querySelectorAll('.btn-rename').forEach(btn => {
+        btn.addEventListener('click', handleRename);
+      });
+
+      document.querySelectorAll('.btn-delete').forEach(btn => {
+        btn.addEventListener('click', handleDelete);
+      });
+
+      document.querySelectorAll('.item-input').forEach(input => {
+        input.addEventListener('blur', handleRenameComplete);
+        input.addEventListener('keypress', (e) => {
+          if (e.key === 'Enter') {
+            handleRenameComplete(e);
+          }
+        });
+      });
     }
-  }
 
-  render();
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
 
-  // ── IPC: receive items from overlay ──
-  window.eazy.onAddItem((text) => {
-    const cat = classify(text);
-    items[cat].push({ value: text, ts: new Date().toISOString() });
-    render();
-  });
+    function formatTimestamp(timestamp) {
+      const date = new Date(timestamp);
+      return date.toLocaleString();
+    }
 
-  // ── Controls ──
-  document.getElementById('btnToggle').addEventListener('click', () => window.eazy.toggleCircle());
+    function handleRename(e) {
+      const id = parseInt(e.target.dataset.id);
+      const valueDiv = document.querySelector(`.item-value[data-id="${id}"]`);
+      const input = document.querySelector(`.item-input[data-id="${id}"]`);
+      
+      valueDiv.classList.add('editing');
+      input.classList.add('active');
+      input.focus();
+      input.select();
+    }
 
-  document.getElementById('btnDiscard').addEventListener('click', () => {
-    for (const cat of categories) items[cat] = [];
-    render();
-  });
+    function handleRenameComplete(e) {
+      const id = parseInt(e.target.dataset.id);
+      const input = e.target;
+      const newValue = input.value.trim();
+      
+      if (newValue) {
+        const item = items.find(item => item.id === id);
+        if (item) {
+          item.value = newValue;
+          ipcRenderer.send('update-item', item);
+        }
+      }
+      
+      const valueDiv = document.querySelector(`.item-value[data-id="${id}"]`);
+      valueDiv.classList.remove('editing');
+      input.classList.remove('active');
+    }
 
-  document.getElementById('btnSave').addEventListener('click', () => {
-    document.getElementById('formatRow').classList.toggle('show');
-  });
-
-  document.getElementById('btnConfirmSave').addEventListener('click', async () => {
-    const fmt = document.getElementById('exportFormat').value;
-    const csv = buildCSV(fmt);
-    if (!csv) return;
-    await window.eazy.saveCSV(csv);
-    document.getElementById('formatRow').classList.remove('show');
-  });
-
-  function escapeCSV(v) {
-    if (/[,"\n]/.test(v)) return '"' + v.replace(/"/g, '""') + '"';
-    return v;
-  }
-
-  function buildCSV(fmt) {
-    const rows = [];
-    const allItems = [];
-    for (const cat of categories) {
-      for (const entry of items[cat]) {
-        allItems.push({ category: labels[cat], value: entry.value, ts: entry.ts });
+    function handleDelete(e) {
+      const id = parseInt(e.target.dataset.id);
+      if (confirm('Are you sure you want to discard this item?')) {
+        ipcRenderer.send('delete-item', id);
       }
     }
-    if (allItems.length === 0) return null;
 
-    switch (fmt) {
-      case 'cat-val':
-        rows.push('Category,Value');
-        allItems.forEach(i => rows.push(escapeCSV(i.category) + ',' + escapeCSV(i.value)));
-        break;
-      case 'val-cat':
-        rows.push('Value,Category');
-        allItems.forEach(i => rows.push(escapeCSV(i.value) + ',' + escapeCSV(i.category)));
-        break;
-      case 'grouped':
-        for (const cat of categories) {
-          if (items[cat].length === 0) continue;
-          rows.push(labels[cat]);
-          items[cat].forEach(entry => rows.push(escapeCSV(entry.value)));
-          rows.push('');
+    // Toggle overlay
+    toggleOverlayBtn.addEventListener('click', () => {
+      overlayVisible = !overlayVisible;
+      ipcRenderer.send('toggle-overlay', overlayVisible);
+      toggleOverlayBtn.textContent = overlayVisible ? 'Hide Overlay' : 'Show Overlay';
+    });
+
+    // Export functionality
+    exportBtn.addEventListener('click', () => {
+      exportModal.classList.add('active');
+    });
+
+    cancelExportBtn.addEventListener('click', () => {
+      exportModal.classList.remove('active');
+    });
+
+    confirmExportBtn.addEventListener('click', () => {
+      const options = {
+        category: true, // Always included
+        value: true, // Always included
+        timestamp: document.getElementById('opt-timestamp').checked,
+        id: document.getElementById('opt-id').checked,
+        length: document.getElementById('opt-length').checked,
+        dateOnly: document.getElementById('opt-date-only').checked,
+        timeOnly: document.getElementById('opt-time-only').checked
+      };
+
+      exportCSV(options);
+      exportModal.classList.remove('active');
+    });
+
+    function exportCSV(options) {
+      if (items.length === 0) {
+        alert('No items to export');
+        return;
+      }
+
+      // Build CSV header
+      let headers = ['Category', 'Value'];
+      if (options.id) headers.push('ID');
+      if (options.timestamp) headers.push('Timestamp');
+      if (options.dateOnly) headers.push('Date');
+      if (options.timeOnly) headers.push('Time');
+      if (options.length) headers.push('Length');
+
+      // Build CSV rows
+      const rows = items.map(item => {
+        const row = [
+          item.category,
+          `"${item.value.replace(/"/g, '""')}"`
+        ];
+        
+        if (options.id) row.push(item.id);
+        if (options.timestamp) row.push(item.timestamp);
+        if (options.dateOnly) {
+          const date = new Date(item.timestamp);
+          row.push(date.toLocaleDateString());
         }
-        break;
-      case 'id':
-        rows.push('ID,Category,Value');
-        allItems.forEach((i, idx) => rows.push((idx + 1) + ',' + escapeCSV(i.category) + ',' + escapeCSV(i.value)));
-        break;
-      case 'timestamp':
-        rows.push('Timestamp,Category,Value');
-        allItems.forEach(i => rows.push(i.ts + ',' + escapeCSV(i.category) + ',' + escapeCSV(i.value)));
-        break;
-      case 'pipe':
-        for (const cat of categories) {
-          if (items[cat].length === 0) continue;
-          rows.push(escapeCSV(labels[cat]) + ',' + escapeCSV(items[cat].map(e => e.value).join('|')));
+        if (options.timeOnly) {
+          const date = new Date(item.timestamp);
+          row.push(date.toLocaleTimeString());
         }
-        break;
+        if (options.length) row.push(item.value.length);
+        
+        return row.join(',');
+      });
+
+      const csv = [headers.join(','), ...rows].join('\n');
+
+      // Save file
+      const { dialog } = require('@electron/remote');
+      
+      dialog.showSaveDialog({
+        title: 'Export CSV',
+        defaultPath: 'eazylyst-export.csv',
+        filters: [
+          { name: 'CSV Files', extensions: ['csv'] },
+          { name: 'All Files', extensions: ['*'] }
+        ]
+      }).then(result => {
+        if (!result.canceled && result.filePath) {
+          fs.writeFileSync(result.filePath, csv, 'utf-8');
+          alert('CSV exported successfully!');
+        }
+      }).catch(err => {
+        console.error('Export error:', err);
+        alert('Error exporting CSV: ' + err.message);
+      });
     }
-    return rows.join('\n');
-  }
-</script>
+  </script>
 </body>
 </html>

@@ -1,15 +1,35 @@
 {
   "name": "eazylyst",
   "version": "1.0.0",
-  "description": "A lightweight desktop app for quickly collecting and categorizing text and links via drag-and-drop.",
+  "description": "List maker software with drag-and-drop categorization",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "test": "node test/classify.test.js"
+    "build": "electron-builder --win",
+    "test": "node test-categorization.js"
   },
-  "keywords": ["electron", "drag-drop", "categorize", "clipboard"],
-  "license": "MIT",
+  "keywords": [
+    "electron",
+    "list",
+    "categorization"
+  ],
+  "author": "",
+  "license": "ISC",
   "devDependencies": {
-    "electron": "^28.0.0"
+    "electron": "^28.0.0",
+    "electron-builder": "^24.9.1"
+  },
+  "build": {
+    "appId": "com.eazylyst.app",
+    "productName": "EazyLyst",
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "icon": "build/icon.ico"
+    }
+  },
+  "dependencies": {
+    "@electron/remote": "^2.1.3"
   }
 }

@@ -1,52 +1,87 @@
 # EazyLyst
 
-A lightweight Windows desktop app (Electron) that lets you quickly collect and categorize text and links from any application via drag‑and‑drop.
+A Windows Electron app for collecting and categorizing dropped text and URLs.
 
 ## Features
 
-- **Circular overlay** – a small transparent circle, always on top, acts as a drag‑and‑drop target.
-- **Side panel** – a right‑docked window showing captured items organized into three categories:
-  - **Name** – detected person names (2–3 capitalized words)
-  - **Business** – business names (suffixes like Inc, LLC, Ltd, etc. and keywords like Bank, Financial, Holdings, etc.)
-  - **Links** – URLs (http://, https://, www.)
-- **Automatic classification** using heuristic rules.
-- **Rename labels** – click any section label in the panel to rename it.
-- **CSV export** with six format options:
-  1. Category,Value (default)
-  2. Value,Category
-  3. Grouped with blank lines
-  4. With ID column
-  5. With Timestamp column
-  6. Category row with pipe‑separated values
-- **Toggle Circle** / **Discard** buttons for quick control.
+### Circular Drop Target
+- **Always-on-top transparent circular overlay** that accepts drag-and-drop
+- Positioned in the center of the screen
+- Visual feedback when dragging items over it
+- Can be toggled on/off from the panel
 
-## Prerequisites
+### Auto-Categorization
+Items are automatically categorized into three types:
 
-- [Node.js](https://nodejs.org/) v18 or later
-- npm (comes with Node.js)
+1. **Links**: URLs starting with `http://`, `https://`, or `www.`
+2. **Business**: Items containing business keywords:
+   - Legal entities: Inc, LLC, Ltd, Corp, Corporation
+   - Business types: Solutions, Group, Systems, Holdings, Partners, Ventures, Bank, Financial, Services, Industries, Enterprises
+   - Common business words: Company, Firm, Agency, Capital, Investment, Management, Consulting
+3. **Name**: 2-3 capitalized words (e.g., "John Smith", "Jane Doe Wilson")
+4. **Default**: Any other text defaults to Business category
 
-## Getting Started
+### Panel Features
+- **Right-docked panel** displaying all collected items
+- **Rename labels**: Click "Rename" to edit any item's value
+- **Discard items**: Remove items you don't need
+- **Toggle overlay**: Show/hide the circular drop target
+- **Export CSV**: Export your collection with customizable columns:
+  - Category (required)
+  - Value (required)
+  - ID (optional)
+  - Timestamp (optional)
+  - Date Only (optional)
+  - Time Only (optional)
+  - Value Length (optional)
+
+## Installation
 
 ```bash
-# Install dependencies
 npm install
+```
 
-# Start the app
+## Running the App
+
+```bash
 npm start
 ```
 
-## Running Tests
+## Building for Windows
 
 ```bash
-npm test
+npm run build
 ```
 
-## How to Use
+This will create a Windows installer in the `dist` folder.
 
-1. Launch the app — a blue dashed circle appears in the center of the screen and the side panel docks to the right.
-2. Highlight text or a URL in any application and drag it onto the circle.
-3. The item is automatically classified and appears in the panel.
-4. Rename categories by clicking their label text.
-5. Click **Save CSV** to choose an export format and save.
-6. Click **Discard** to clear all items.
-7. Click **Toggle Circle** to show/hide the overlay.
+## Usage
+
+1. Start the application
+2. A circular drop target will appear in the center of your screen
+3. The panel window will open on the right side
+4. Drag and drop text or URLs onto the circular target
+5. Items will automatically be categorized and appear in the panel
+6. Use the panel to:
+   - Rename items by clicking the "Rename" button
+   - Discard items you don't need
+   - Toggle the drop target visibility
+   - Export your collection to CSV
+
+## Technical Details
+
+- Built with Electron 28
+- Uses transparent, always-on-top windows for the drop target
+- Implements IPC communication between windows
+- Drag-and-drop API for capturing text and URLs
+- CSV export with customizable options
+
+## Requirements
+
+- Windows 10 or later
+- Node.js 16 or later
+
+## License
+
+ISC
+
