@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    width: 120px; height: 120px;
+    overflow: hidden;
+    background: transparent;
+    -webkit-app-region: drag;
+    user-select: none;
+  }
+  #circle {
+    width: 100px; height: 100px;
+    margin: 10px;
+    border-radius: 50%;
+    background: rgba(56, 132, 244, 0.25);
+    border: 3px dashed rgba(56, 132, 244, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: system-ui, sans-serif;
+    font-size: 11px;
+    color: rgba(56, 132, 244, 0.9);
+    text-align: center;
+    transition: background 0.2s, border-color 0.2s;
+    -webkit-app-region: drag;
+  }
+  #circle.over {
+    background: rgba(56, 244, 100, 0.35);
+    border-color: rgba(56, 244, 100, 0.9);
+  }
+</style>
+</head>
+<body>
+<div id="circle">Drop here</div>
+<script>
+  const circle = document.getElementById('circle');
+
+  // Allow external drops
+  circle.addEventListener('dragover', e => { e.preventDefault(); e.stopPropagation(); circle.classList.add('over'); });
+  circle.addEventListener('dragleave', e => { e.preventDefault(); circle.classList.remove('over'); });
+  circle.addEventListener('drop', e => {
+    e.preventDefault();
+    e.stopPropagation();
+    circle.classList.remove('over');
+
+    let text = e.dataTransfer.getData('text/uri-list')
+            || e.dataTransfer.getData('text/plain')
+            || '';
+    text = text.trim();
+    if (text) window.eazy.sendDrop(text);
+  });
+</script>
+</body>
+</html>
