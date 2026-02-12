@@ -166,6 +166,7 @@
   // ── State ──
   const categories = ['Name', 'Business', 'Links'];
   const labels = { Name: 'Name', Business: 'Business', Links: 'Links' };
+  // Each entry: { value: string, ts: string }
   const items = { Name: [], Business: [], Links: [] };
 
   function render() {
@@ -195,10 +196,10 @@
 
       const list = document.createElement('div');
       list.className = 'section-items';
-      for (const val of items[cat]) {
+      for (const entry of items[cat]) {
         const d = document.createElement('div');
         d.className = 'item';
-        d.textContent = val;
+        d.textContent = entry.value;
         list.appendChild(d);
       }
       sec.appendChild(list);
@@ -211,7 +212,7 @@
   // ── IPC: receive items from overlay ──
   window.eazy.onAddItem((text) => {
     const cat = classify(text);
-    items[cat].push(text);
+    items[cat].push({ value: text, ts: new Date().toISOString() });
     render();
   });
 
@@ -244,8 +245,8 @@
     const rows = [];
     const allItems = [];
     for (const cat of categories) {
-      for (const v of items[cat]) {
-        allItems.push({ category: labels[cat], value: v });
+      for (const entry of items[cat]) {
+        allItems.push({ category: labels[cat], value: entry.value, ts: entry.ts });
       }
     }
     if (allItems.length === 0) return null;
@@ -263,7 +264,7 @@
         for (const cat of categories) {
           if (items[cat].length === 0) continue;
           rows.push(labels[cat]);
-          items[cat].forEach(v => rows.push(escapeCSV(v)));
+          items[cat].forEach(entry => rows.push(escapeCSV(entry.value)));
           rows.push('');
         }
         break;
@@ -273,12 +274,12 @@
         break;
       case 'timestamp':
         rows.push('Timestamp,Category,Value');
-        allItems.forEach(i => rows.push(new Date().toISOString() + ',' + escapeCSV(i.category) + ',' + escapeCSV(i.value)));
+        allItems.forEach(i => rows.push(i.ts + ',' + escapeCSV(i.category) + ',' + escapeCSV(i.value)));
         break;
       case 'pipe':
         for (const cat of categories) {
           if (items[cat].length === 0) continue;
-          rows.push(labels[cat] + ',' + items[cat].join('|'));
+          rows.push(escapeCSV(labels[cat]) + ',' + escapeCSV(items[cat].map(e => e.value).join('|')));
         }
         break;
     }
