@@ -15,10 +15,10 @@ function createDropTargetWindow() {
   const { width, height } = primaryDisplay.workAreaSize;
 
   dropTargetWindow = new BrowserWindow({
-    width: 150,
-    height: 150,
-    x: Math.floor(width / 2 - 75),
-    y: Math.floor(height / 2 - 75),
+    width: 75,
+    height: 75,
+    x: Math.floor(width / 2 - 37),
+    y: Math.floor(height / 2 - 37),
     transparent: true,
     frame: false,
     alwaysOnTop: true,
@@ -68,7 +68,7 @@ function createPanelWindow() {
 
 // IPC handlers
 ipcMain.on('item-dropped', (event, text) => {
-  const category = categorizeItem(text);
+  const category = classify(text);
   const item = {
     id: itemIdCounter++,
     value: text,
@@ -105,7 +105,7 @@ ipcMain.on('update-item', (event, updatedItem) => {
     if (panelWindow) {
       panelWindow.webContents.send('item-updated', updatedItem);
     }
-  }lassify
+  }
 });
 
 ipcMain.on('delete-item', (event, itemId) => {
