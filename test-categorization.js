@@ -1,41 +1,5 @@
 // Test categorization logic
-function categorizeItem(text) {
-  const trimmed = text.trim();
-  
-  // Check for Links (http/https/www)
-  if (/^(https?:\/\/|www\.)/i.test(trimmed)) {
-    return 'Links';
-  }
-  
-  // Business keywords
-  const businessKeywords = [
-    'Solutions', 'Group', 'Systems', 'Holdings', 'Partners', 
-    'Ventures', 'Bank', 'Financial', 'Services', 'Industries', 
-    'Enterprises', 'Inc', 'LLC', 'Ltd', 'Corp', 'Corporation',
-    'Company', 'Firm', 'Agency', 'Capital', 'Investment', 
-    'Management', 'Consulting'
-  ];
-  
-  const hasBusinessKeyword = businessKeywords.some(keyword => 
-    new RegExp(`\\b${keyword}\\b`, 'i').test(trimmed)
-  );
-  
-  if (hasBusinessKeyword) {
-    return 'Business';
-  }
-  
-  // Check for Name (2-3 capitalized words)
-  const words = trimmed.split(/\s+/);
-  if (words.length >= 2 && words.length <= 3) {
-    const allCapitalized = words.every(word => /^[A-Z][a-z]+$/.test(word));
-    if (allCapitalized) {
-      return 'Name';
-    }
-  }
-  
-  // Default to Business
-  return 'Business';
-}
+const { classify } = require('./classify');
 
 // Test cases
 const testCases = [
@@ -59,7 +23,7 @@ let passed = 0;
 let failed = 0;
 
 testCases.forEach(({ input, expected }) => {
-  const result = categorizeItem(input);
+  const result = classify(input);
   const status = result === expected ? '✓' : '✗';
   if (result === expected) {
     passed++;
@@ -80,3 +44,4 @@ if (failed === 0) {
   console.log('\nSome tests failed! ✗');
   process.exit(1);
 }
+lassify

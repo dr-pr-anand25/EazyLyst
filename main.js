@@ -1,6 +1,7 @@
 const { app, BrowserWindow, ipcMain, screen } = require('electron');
 const path = require('path');
 const remoteMain = require('@electron/remote/main');
+const { classify } = require('./classify');
 
 remoteMain.initialize();
 
@@ -63,44 +64,7 @@ function createPanelWindow() {
   });
 }
 
-// Auto-categorization logic
-function categorizeItem(text) {
-  const trimmed = text.trim();
-  
-  // Check for Links (http/https/www)
-  if (/^(https?:\/\/|www\.)/i.test(trimmed)) {
-    return 'Links';
-  }
-  
-  // Business keywords
-  const businessKeywords = [
-    'Solutions', 'Group', 'Systems', 'Holdings', 'Partners', 
-    'Ventures', 'Bank', 'Financial', 'Services', 'Industries', 
-    'Enterprises', 'Inc', 'LLC', 'Ltd', 'Corp', 'Corporation',
-    'Company', 'Firm', 'Agency', 'Capital', 'Investment', 
-    'Management', 'Consulting'
-  ];
-  
-  const hasBusinessKeyword = businessKeywords.some(keyword => 
-    new RegExp(`\\b${keyword}\\b`, 'i').test(trimmed)
-  );
-  
-  if (hasBusinessKeyword) {
-    return 'Business';
-  }
-  
-  // Check for Name (2-3 capitalized words)
-  const words = trimmed.split(/\s+/);
-  if (words.length >= 2 && words.length <= 3) {
-    const allCapitalized = words.every(word => /^[A-Z][a-z]+$/.test(word));
-    if (allCapitalized) {
-      return 'Name';
-    }
-  }
-  
-  // Default to Business
-  return 'Business';
-}
+
 
 // IPC handlers
 ipcMain.on('item-dropped', (event, text) => {
@@ -141,7 +105,7 @@ ipcMain.on('update-item', (event, updatedItem) => {
     if (panelWindow) {
       panelWindow.webContents.send('item-updated', updatedItem);
     }
-  }
+  }lassify
 });
 
 ipcMain.on('delete-item', (event, itemId) => {
