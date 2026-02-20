@@ -1,17 +1,20 @@
-name: Build Windows Executable
+name: Build Desktop Artifacts
 
 on:
   push:
     branches: [ main ]
   pull_request:
     branches: [ main ]
+  workflow_dispatch:
 
 jobs:
   build:
-    runs-on: windows-latest
+    runs-on: ${{ matrix.os }}
 
     strategy:
+      fail-fast: false
       matrix:
+        os: [windows-latest, macos-latest]
         node-version: [20.x]
 
     steps:
@@ -30,11 +33,16 @@ jobs:
       run: npm test
     
     - name: Build for Windows
-      run: npm run build
+      if: runner.os == 'Windows'
+      run: npm run build:win
+
+    - name: Build for macOS
+      if: runner.os == 'macOS'
+      run: npm run build:mac
     
-    - name: Upload Windows Installer
+    - name: Upload build artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: EazyLyst-Windows
+        name: EazyLyst-${{ runner.os }}
         path: dist/
         retention-days: 30

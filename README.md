@@ -1,6 +1,6 @@
 # EazyLyst
 
-A Windows Electron app for collecting and categorizing dropped text and URLs.
+A desktop Electron app for collecting and categorizing dropped text and URLs.
 
 ## Features
 
@@ -47,13 +47,27 @@ npm install
 npm start
 ```
 
-## Building for Windows
+## Building
+
+### Build for your current platform
 
 ```bash
 npm run build
 ```
 
-This will create a Windows installer in the `dist` folder.
+### Build for Windows
+
+```bash
+npm run build:win
+```
+
+### Build for macOS
+
+```bash
+npm run build:mac
+```
+
+Build artifacts are created in the `dist` folder.
 
 ## Usage
 
@@ -78,8 +92,8 @@ This will create a Windows installer in the `dist` folder.
 
 ## Requirements
 
-- Windows 10 or later
-- Node.js 16 or later
+- Windows 10+ or macOS 12+
+- Node.js 18 or later
 
 ## License
 
