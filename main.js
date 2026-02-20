@@ -10,6 +10,8 @@ let dropTargetWindow = null;
 let panelWindow = null;
 let collectedItems = [];
 let itemIdCounter = 1;
+let lists = [];
+let listIdCounter = 1;
 
 function broadcastUpdaterStatus(status) {
   if (panelWindow && !panelWindow.isDestroyed()) {
@@ -182,6 +184,51 @@ ipcMain.on('delete-item', (event, itemId) => {
 
 ipcMain.on('get-csv-data', (event, options) => {
   event.reply('csv-data', { items: collectedItems, options });
+});
+
+// Lists IPC handlers
+ipcMain.on('create-list', (event, name) => {
+  const list = {
+    id: listIdCounter++,
+    name: name.trim(),
+    itemIds: [],
+    createdAt: new Date().toISOString()
+  };
+  lists.push(list);
+  if (panelWindow) panelWindow.webContents.send('list-created', list);
+});
+
+ipcMain.on('rename-list', (event, { id, name }) => {
+  const list = lists.find(l => l.id === id);
+  if (list) {
+    list.name = name.trim();
+    if (panelWindow) panelWindow.webContents.send('list-updated', list);
+  }
+});
+
+ipcMain.on('delete-list', (event, id) => {
+  lists = lists.filter(l => l.id !== id);
+  if (panelWindow) panelWindow.webContents.send('list-deleted', id);
+});
+
+ipcMain.on('add-item-to-list', (event, { listId, itemId }) => {
+  const list = lists.find(l => l.id === listId);
+  if (list && !list.itemIds.includes(itemId)) {
+    list.itemIds.push(itemId);
+    if (panelWindow) panelWindow.webContents.send('list-updated', list);
+  }
+});
+
+ipcMain.on('remove-item-from-list', (event, { listId, itemId }) => {
+  const list = lists.find(l => l.id === listId);
+  if (list) {
+    list.itemIds = list.itemIds.filter(id => id !== itemId);
+    if (panelWindow) panelWindow.webContents.send('list-updated', list);
+  }
+});
+
+ipcMain.on('get-all-lists', (event) => {
+  event.reply('all-lists', lists);
 });
 
 app.whenReady().then(() => {

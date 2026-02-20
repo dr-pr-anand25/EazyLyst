@@ -231,6 +231,166 @@
       font-size: 48px;
       margin-bottom: 10px;
     }
+
+    /* ── Tabs ── */
+    .tab-bar {
+      display: flex;
+      background: #e8e8e8;
+      border-bottom: 1px solid #ddd;
+      flex-shrink: 0;
+    }
+    .tab {
+      flex: 1;
+      padding: 10px;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      color: #666;
+      border-bottom: 3px solid transparent;
+      transition: all 0.2s;
+    }
+    .tab.active {
+      color: #4682ff;
+      border-bottom-color: #4682ff;
+      background: white;
+    }
+    .tab:hover:not(.active) { background: #f0f0f0; }
+    .tab-content {
+      display: none;
+      flex: 1;
+      overflow: hidden;
+      flex-direction: column;
+    }
+    .tab-content.active { display: flex; }
+
+    /* ── Lists tab ── */
+    .lists-toolbar {
+      display: flex;
+      gap: 8px;
+      padding: 12px 15px;
+      border-bottom: 1px solid #e8e8e8;
+      background: white;
+      flex-shrink: 0;
+    }
+    .lists-toolbar input {
+      flex: 1;
+      padding: 8px 12px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 14px;
+      outline: none;
+    }
+    .lists-toolbar input:focus { border-color: #4682ff; }
+    #lists-container {
+      flex: 1;
+      overflow-y: auto;
+      padding: 15px;
+    }
+    .list-card {
+      background: white;
+      border-radius: 8px;
+      margin-bottom: 12px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      overflow: hidden;
+    }
+    .list-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 15px;
+      cursor: pointer;
+      user-select: none;
+      transition: background 0.2s;
+    }
+    .list-card-header:hover { background: #f8f8f8; }
+    .list-title-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex: 1;
+      min-width: 0;
+    }
+    .list-name {
+      font-weight: 600;
+      font-size: 15px;
+      color: #333;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .list-name-input {
+      display: none;
+      font-size: 15px;
+      font-weight: 600;
+      border: 2px solid #4682ff;
+      border-radius: 4px;
+      padding: 2px 6px;
+      flex: 1;
+      min-width: 0;
+    }
+    .list-name-input.active { display: block; }
+    .list-count {
+      font-size: 11px;
+      background: #e8e8e8;
+      color: #666;
+      padding: 2px 7px;
+      border-radius: 10px;
+      white-space: nowrap;
+    }
+    .list-chevron {
+      font-size: 10px;
+      color: #999;
+      margin-left: 8px;
+      transition: transform 0.2s;
+    }
+    .list-card.expanded .list-chevron { transform: rotate(180deg); }
+    .list-card-actions { display: flex; gap: 4px; margin-left: 8px; }
+    .list-body { display: none; border-top: 1px solid #f0f0f0; }
+    .list-card.expanded .list-body { display: block; }
+    .list-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      padding: 8px 15px;
+      border-bottom: 1px solid #f5f5f5;
+    }
+    .list-item:last-child { border-bottom: none; }
+    .list-item-content { flex: 1; min-width: 0; }
+    .list-item-value { font-size: 13px; color: #333; word-break: break-word; }
+    .list-item-category { font-size: 11px; color: #999; margin-top: 2px; }
+    .list-empty { padding: 20px; text-align: center; color: #bbb; font-size: 13px; }
+    .lists-empty-state { text-align: center; padding: 40px; color: #999; }
+
+    /* ── Add-to-list dropdown ── */
+    .add-to-list-wrapper { position: relative; display: inline-block; }
+    .add-to-list-dropdown {
+      display: none;
+      position: absolute;
+      right: 0;
+      top: 100%;
+      background: white;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      min-width: 160px;
+      z-index: 1000;
+      margin-top: 4px;
+    }
+    .add-to-list-dropdown.open { display: block; }
+    .add-to-list-option {
+      padding: 8px 12px;
+      cursor: pointer;
+      font-size: 13px;
+      color: #333;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .add-to-list-option:hover { background: #f0f5ff; color: #4682ff; }
+    .add-to-list-option.no-lists { color: #999; cursor: default; font-style: italic; }
+    .add-to-list-option.no-lists:hover { background: white; color: #999; }
   </style>
 </head>
 <body>
@@ -242,10 +402,32 @@
     </div>
   </header>
 
-  <div id="items-container">
-    <div class="empty-state">
-      <div class="empty-state-icon">📋</div>
-      <p>Drop items into the circular overlay to start collecting</p>
+  <div class="tab-bar">
+    <button class="tab active" data-tab="collected">Collected</button>
+    <button class="tab" data-tab="lists">Lists</button>
+  </div>
+
+  <!-- Collected tab -->
+  <div id="tab-collected" class="tab-content active">
+    <div id="items-container">
+      <div class="empty-state">
+        <div class="empty-state-icon">📋</div>
+        <p>Drop items into the circular overlay to start collecting</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Lists tab -->
+  <div id="tab-lists" class="tab-content">
+    <div class="lists-toolbar">
+      <input id="new-list-input" type="text" placeholder="New list name..." />
+      <button id="create-list-btn" class="btn-primary">+ New List</button>
+    </div>
+    <div id="lists-container">
+      <div class="lists-empty-state">
+        <div class="empty-state-icon">📝</div>
+        <p>Create a list to organise your collected items</p>
+      </div>
     </div>
   </div>
 
@@ -307,8 +489,9 @@
     const cancelExportBtn = document.getElementById('cancelExport');
     const confirmExportBtn = document.getElementById('confirmExport');
 
-    // Request all items on load
+    // Request all items and lists on load
     ipcRenderer.send('get-all-items');
+    ipcRenderer.send('get-all-lists');
 
     // Listen for all items
     ipcRenderer.on('all-items', (event, allItems) => {
@@ -353,6 +536,10 @@
           <div class="item-header">
             <span class="category-badge category-${item.category.toLowerCase()}">${item.category}</span>
             <div class="item-actions">
+              <div class="add-to-list-wrapper">
+                <button class="btn-small btn-add-list" data-id="${item.id}">+ List</button>
+                <div class="add-to-list-dropdown" data-id="${item.id}"></div>
+              </div>
               <button class="btn-small btn-rename" data-id="${item.id}">Rename</button>
               <button class="btn-small btn-danger btn-delete" data-id="${item.id}">Discard</button>
             </div>
@@ -378,6 +565,13 @@
           if (e.key === 'Enter') {
             handleRenameComplete(e);
           }
+        });
+      });
+
+      document.querySelectorAll('.btn-add-list').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          toggleAddToListDropdown(parseInt(btn.dataset.id));
         });
       });
     }
@@ -518,6 +712,178 @@
         alert('Error exporting CSV: ' + err.message);
       });
     }
+
+    // ── Tab switching ──────────────────────────────────────────────────────
+    document.querySelectorAll('.tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        document.getElementById('tab-' + tab.dataset.tab).classList.add('active');
+      });
+    });
+
+    // ── Lists state & IPC ──────────────────────────────────────────────────
+    let listsData = [];
+    const createListBtn = document.getElementById('create-list-btn');
+    const newListInput  = document.getElementById('new-list-input');
+    const listsContainer = document.getElementById('lists-container');
+
+    createListBtn.addEventListener('click', () => {
+      const name = newListInput.value.trim();
+      if (!name) { newListInput.focus(); return; }
+      ipcRenderer.send('create-list', name);
+      newListInput.value = '';
+    });
+    newListInput.addEventListener('keypress', e => { if (e.key === 'Enter') createListBtn.click(); });
+
+    ipcRenderer.on('all-lists', (event, allLists) => {
+      listsData = allLists;
+      renderLists();
+    });
+    ipcRenderer.on('list-created', (event, list) => {
+      listsData.push(list);
+      renderLists();
+      // Auto-expand newly created list
+      setTimeout(() => {
+        const card = listsContainer.querySelector(`.list-card[data-list-id="${list.id}"]`);
+        if (card) card.classList.add('expanded');
+      }, 0);
+    });
+    ipcRenderer.on('list-updated', (event, updated) => {
+      const idx = listsData.findIndex(l => l.id === updated.id);
+      if (idx !== -1) listsData[idx] = updated;
+      renderLists();
+    });
+    ipcRenderer.on('list-deleted', (event, listId) => {
+      listsData = listsData.filter(l => l.id !== listId);
+      renderLists();
+    });
+
+    function renderLists() {
+      if (listsData.length === 0) {
+        listsContainer.innerHTML = `
+          <div class="lists-empty-state">
+            <div class="empty-state-icon">📝</div>
+            <p>Create a list to organise your collected items</p>
+          </div>`;
+        return;
+      }
+
+      // Remember which lists were expanded before re-render
+      const expanded = new Set(
+        [...listsContainer.querySelectorAll('.list-card.expanded')]
+          .map(c => parseInt(c.dataset.listId))
+      );
+
+      listsContainer.innerHTML = listsData.map(list => {
+        const listItems = list.itemIds.map(id => items.find(i => i.id === id)).filter(Boolean);
+        const bodyHTML = listItems.length === 0
+          ? '<div class="list-empty">No items yet — use "+ List" on any collected item</div>'
+          : listItems.map(item => `
+              <div class="list-item">
+                <div class="list-item-content">
+                  <div class="list-item-value">${escapeHtml(item.value)}</div>
+                  <div class="list-item-category">${item.category}</div>
+                </div>
+                <button class="btn-small btn-danger btn-remove-from-list"
+                  data-list-id="${list.id}" data-item-id="${item.id}"
+                  style="margin-left:8px;flex-shrink:0">✕</button>
+              </div>`).join('');
+
+        return `
+          <div class="list-card${expanded.has(list.id) ? ' expanded' : ''}" data-list-id="${list.id}">
+            <div class="list-card-header">
+              <div class="list-title-group">
+                <span class="list-name">${escapeHtml(list.name)}</span>
+                <input type="text" class="list-name-input" data-list-id="${list.id}" value="${escapeHtml(list.name)}">
+                <span class="list-count">${listItems.length} item${listItems.length !== 1 ? 's' : ''}</span>
+              </div>
+              <div class="list-card-actions">
+                <button class="btn-small btn-rename-list" data-list-id="${list.id}">Rename</button>
+                <button class="btn-small btn-danger btn-delete-list" data-list-id="${list.id}">Delete</button>
+              </div>
+              <span class="list-chevron">▼</span>
+            </div>
+            <div class="list-body">${bodyHTML}</div>
+          </div>`;
+      }).join('');
+
+      listsContainer.querySelectorAll('.list-card-header').forEach(header => {
+        header.addEventListener('click', e => {
+          if (e.target.closest('button') || e.target.closest('input')) return;
+          header.closest('.list-card').classList.toggle('expanded');
+        });
+      });
+
+      listsContainer.querySelectorAll('.btn-rename-list').forEach(btn => {
+        btn.addEventListener('click', e => {
+          e.stopPropagation();
+          const card = btn.closest('.list-card');
+          card.querySelector('.list-name').style.display = 'none';
+          const input = card.querySelector('.list-name-input');
+          input.classList.add('active');
+          input.focus(); input.select();
+        });
+      });
+
+      listsContainer.querySelectorAll('.list-name-input').forEach(input => {
+        const save = () => {
+          const name = input.value.trim();
+          if (name) ipcRenderer.send('rename-list', { id: parseInt(input.dataset.listId), name });
+          input.classList.remove('active');
+          input.closest('.list-card').querySelector('.list-name').style.display = '';
+        };
+        input.addEventListener('blur', save);
+        input.addEventListener('keypress', e => { if (e.key === 'Enter') save(); });
+      });
+
+      listsContainer.querySelectorAll('.btn-delete-list').forEach(btn => {
+        btn.addEventListener('click', e => {
+          e.stopPropagation();
+          if (confirm('Delete this list?'))
+            ipcRenderer.send('delete-list', parseInt(btn.dataset.listId));
+        });
+      });
+
+      listsContainer.querySelectorAll('.btn-remove-from-list').forEach(btn => {
+        btn.addEventListener('click', () =>
+          ipcRenderer.send('remove-item-from-list', {
+            listId: parseInt(btn.dataset.listId),
+            itemId: parseInt(btn.dataset.itemId)
+          })
+        );
+      });
+    }
+
+    function toggleAddToListDropdown(itemId) {
+      document.querySelectorAll('.add-to-list-dropdown.open').forEach(d => {
+        if (parseInt(d.dataset.id) !== itemId) d.classList.remove('open');
+      });
+      const dropdown = document.querySelector(`.add-to-list-dropdown[data-id="${itemId}"]`);
+      if (!dropdown) return;
+      if (dropdown.classList.contains('open')) { dropdown.classList.remove('open'); return; }
+
+      if (listsData.length === 0) {
+        dropdown.innerHTML = '<div class="add-to-list-option no-lists">No lists yet</div>';
+      } else {
+        dropdown.innerHTML = listsData.map(list =>
+          `<div class="add-to-list-option" data-list-id="${list.id}">${escapeHtml(list.name)}</div>`
+        ).join('');
+        dropdown.querySelectorAll('.add-to-list-option').forEach(opt => {
+          opt.addEventListener('click', () => {
+            ipcRenderer.send('add-item-to-list', { listId: parseInt(opt.dataset.listId), itemId });
+            dropdown.classList.remove('open');
+            document.querySelector('.tab[data-tab="lists"]').click();
+          });
+        });
+      }
+      dropdown.classList.add('open');
+    }
+
+    document.addEventListener('click', () =>
+      document.querySelectorAll('.add-to-list-dropdown.open').forEach(d => d.classList.remove('open'))
+    );
   </script>
 </body>
 </html>
