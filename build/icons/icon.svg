@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"   stop-color="#5c9aff"/>
+      <stop offset="100%" stop-color="#2f6ee0"/>
+    </linearGradient>
+    <linearGradient id="shine" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"   stop-color="#ffffff" stop-opacity="0.18"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background rounded square -->
+  <rect width="1024" height="1024" rx="220" ry="220" fill="url(#bg)"/>
+
+  <!-- Subtle top highlight -->
+  <rect width="1024" height="512" rx="220" ry="220" fill="url(#shine)"/>
+
+  <!-- Stylised "E" built from three horizontal bars + one vertical bar
+       The bars also evoke a bulleted list, reinforcing the app purpose.
+       Vertical bar: x=260, y=240, w=88, h=544
+       Top bar    : y=240, h=90
+       Middle bar : y=467, h=82   (slightly shorter — classic E proportion)
+       Bottom bar : y=694, h=90   -->
+
+  <!-- Vertical spine -->
+  <rect x="260" y="240" width="88" height="544" rx="22" ry="22" fill="white"/>
+
+  <!-- Top horizontal bar -->
+  <rect x="260" y="240" width="504" height="90" rx="22" ry="22" fill="white"/>
+
+  <!-- Middle horizontal bar (slightly shorter) -->
+  <rect x="260" y="467" width="390" height="82" rx="22" ry="22" fill="white"/>
+
+  <!-- Bottom horizontal bar -->
+  <rect x="260" y="694" width="504" height="90" rx="22" ry="22" fill="white"/>
+
+  <!-- Small circle accent — echoes the circular drop-target overlay -->
+  <circle cx="812" cy="730" r="54" fill="white" fill-opacity="0.22"/>
+  <circle cx="812" cy="730" r="34" fill="white" fill-opacity="0.30"/>
+</svg>

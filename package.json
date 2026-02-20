@@ -15,7 +15,7 @@
     "list",
     "categorization"
   ],
-  "author": "",
+  "author": "DanPolland8",
   "license": "ISC",
   "devDependencies": {
     "electron": "^40.4.0",
@@ -24,6 +24,7 @@
   "build": {
     "appId": "com.eazylyst.app",
     "productName": "EazyLyst",
+    "icon": "build/icons/icon.png",
     "publish": [
       {
         "provider": "github",
@@ -34,16 +35,23 @@
       }
     ],
     "win": {
+      "icon": "build/icons/icon.ico",
       "target": [
         "nsis"
       ]
     },
     "mac": {
+      "icon": "build/icons/icon.icns",
       "target": [
         "dmg",
         "zip"
       ],
       "category": "public.app-category.productivity"
+    },
+    "linux": {
+      "icon": "build/icons/icon.png",
+      "target": ["AppImage"],
+      "category": "Utility"
     }
   },
   "dependencies": {
