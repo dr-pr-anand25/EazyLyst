@@ -8,6 +8,9 @@
       <stop offset="0%"   stop-color="#ffffff" stop-opacity="0.18"/>
       <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
     </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="130%" height="130%">
+      <feDropShadow dx="4" dy="6" stdDeviation="8" flood-color="#000000" flood-opacity="0.18"/>
+    </filter>
   </defs>
 
   <!-- Background rounded square -->
@@ -16,26 +19,34 @@
   <!-- Subtle top highlight -->
   <rect width="1024" height="512" rx="220" ry="220" fill="url(#shine)"/>
 
-  <!-- Stylised "E" built from three horizontal bars + one vertical bar
-       The bars also evoke a bulleted list, reinforcing the app purpose.
-       Vertical bar: x=260, y=240, w=88, h=544
-       Top bar    : y=240, h=90
-       Middle bar : y=467, h=82   (slightly shorter — classic E proportion)
-       Bottom bar : y=694, h=90   -->
+  <!-- Paper document (right side) — dog-ear top-right fold -->
+  <polygon points="556,218 808,218 882,292 882,806 556,806"
+    fill="white" fill-opacity="0.93" filter="url(#shadow)"/>
 
-  <!-- Vertical spine -->
-  <rect x="260" y="240" width="88" height="544" rx="22" ry="22" fill="white"/>
+  <!-- Fold crease triangle -->
+  <polygon points="808,218 808,292 882,292"
+    fill="#4682ff" fill-opacity="0.30"/>
 
-  <!-- Top horizontal bar -->
-  <rect x="260" y="240" width="504" height="90" rx="22" ry="22" fill="white"/>
+  <!-- Fold edge lines -->
+  <line x1="808" y1="218" x2="808" y2="292" stroke="#ccddff" stroke-width="2.5"/>
+  <line x1="808" y1="292" x2="882" y2="292" stroke="#ccddff" stroke-width="2.5"/>
 
-  <!-- Middle horizontal bar (slightly shorter) -->
-  <rect x="260" y="467" width="390" height="82" rx="22" ry="22" fill="white"/>
+  <!-- Bullet dots + text lines on paper (list content) -->
+  <circle cx="582" cy="382" r="8" fill="#4682ff" fill-opacity="0.28"/>
+  <rect   x="602" y="372" width="248" height="20" rx="6" ry="6" fill="#4682ff" fill-opacity="0.18"/>
 
-  <!-- Bottom horizontal bar -->
-  <rect x="260" y="694" width="504" height="90" rx="22" ry="22" fill="white"/>
+  <circle cx="582" cy="434" r="8" fill="#4682ff" fill-opacity="0.28"/>
+  <rect   x="602" y="424" width="248" height="20" rx="6" ry="6" fill="#4682ff" fill-opacity="0.18"/>
 
-  <!-- Small circle accent — echoes the circular drop-target overlay -->
-  <circle cx="812" cy="730" r="54" fill="white" fill-opacity="0.22"/>
-  <circle cx="812" cy="730" r="34" fill="white" fill-opacity="0.30"/>
+  <circle cx="582" cy="486" r="8" fill="#4682ff" fill-opacity="0.28"/>
+  <rect   x="602" y="476" width="248" height="20" rx="6" ry="6" fill="#4682ff" fill-opacity="0.18"/>
+
+  <circle cx="582" cy="538" r="8" fill="#4682ff" fill-opacity="0.28"/>
+  <rect   x="602" y="528" width="175" height="20" rx="6" ry="6" fill="#4682ff" fill-opacity="0.18"/>
+
+  <!-- Stylised E (left side) -->
+  <rect x="88"  y="218" width="78"  height="588" rx="22" ry="22" fill="white"/>
+  <rect x="88"  y="218" width="390" height="82"  rx="22" ry="22" fill="white"/>
+  <rect x="88"  y="459" width="296" height="76"  rx="22" ry="22" fill="white"/>
+  <rect x="88"  y="724" width="390" height="82"  rx="22" ry="22" fill="white"/>
 </svg>
