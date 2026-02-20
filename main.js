@@ -4,16 +4,52 @@ const remoteMain = require('@electron/remote/main');
 const { autoUpdater } = require('electron-updater');
 const { classify } = require('./classify');
 const https = require('https');
+const fs   = require('fs');
 
 remoteMain.initialize();
 
 let dropTargetWindow = null;
-let panelWindow = null;
-let collectedItems = [];
-let itemIdCounter = 1;
-let lists = [];
-let listIdCounter = 1;
+let panelWindow      = null;
+let collectedItems   = [];
+let itemIdCounter    = 1;
+let lists            = [];
+let listIdCounter    = 1;
 let perplexityApiKey = null;
+let storePath        = null;
+
+// ── Data persistence ──────────────────────────────────────────────────────────
+function loadStore() {
+  try {
+    if (!storePath || !fs.existsSync(storePath)) return;
+    const raw  = fs.readFileSync(storePath, 'utf8');
+    const data = JSON.parse(raw);
+    if (Array.isArray(data.items))        collectedItems   = data.items;
+    if (typeof data.itemIdCounter === 'number') itemIdCounter = data.itemIdCounter;
+    if (Array.isArray(data.lists))        lists            = data.lists;
+    if (typeof data.listIdCounter === 'number') listIdCounter = data.listIdCounter;
+    if (typeof data.perplexityApiKey === 'string' && data.perplexityApiKey)
+      perplexityApiKey = data.perplexityApiKey;
+  } catch (e) {
+    // Corrupt store — start fresh, old file will be overwritten on next save
+    console.warn('EazyLyst: could not load store:', e.message);
+  }
+}
+
+function saveStore() {
+  if (!storePath) return;
+  try {
+    const data = {
+      items:           collectedItems,
+      itemIdCounter,
+      lists,
+      listIdCounter,
+      perplexityApiKey: perplexityApiKey || ''
+    };
+    fs.writeFileSync(storePath, JSON.stringify(data, null, 2), 'utf8');
+  } catch (e) {
+    console.warn('EazyLyst: could not save store:', e.message);
+  }
+}
 
 // ── Perplexity API helpers ────────────────────────────────────────────────────
 function callPerplexityAPI(prompt) {
@@ -236,20 +272,15 @@ ipcMain.on('item-dropped', (event, text) => {
     category: category,
     timestamp: new Date().toISOString()
   };
-  
   collectedItems.push(item);
-  
-  // Send to panel window if it exists
-  if (panelWindow) {
-    panelWindow.webContents.send('new-item', item);
-  }
-
-  // Kick off profile lookup asynchronously (Name + Business categories only)
+  saveStore();
+  if (panelWindow) panelWindow.webContents.send('new-item', item);
   lookupProfiles(item);
 });
 
 ipcMain.on('set-api-key', (event, key) => {
   perplexityApiKey = key && key.trim() ? key.trim() : null;
+  saveStore();
 });
 
 ipcMain.on('toggle-overlay', (event, visible) => {
@@ -264,23 +295,23 @@ ipcMain.on('toggle-overlay', (event, visible) => {
 
 ipcMain.on('get-all-items', (event) => {
   event.reply('all-items', collectedItems);
+  // Restore the API key into the renderer so the Settings input is pre-filled
+  if (perplexityApiKey) event.reply('stored-api-key', perplexityApiKey);
 });
 
 ipcMain.on('update-item', (event, updatedItem) => {
   const index = collectedItems.findIndex(item => item.id === updatedItem.id);
   if (index !== -1) {
     collectedItems[index] = updatedItem;
-    if (panelWindow) {
-      panelWindow.webContents.send('item-updated', updatedItem);
-    }
+    saveStore();
+    if (panelWindow) panelWindow.webContents.send('item-updated', updatedItem);
   }
 });
 
 ipcMain.on('delete-item', (event, itemId) => {
   collectedItems = collectedItems.filter(item => item.id !== itemId);
-  if (panelWindow) {
-    panelWindow.webContents.send('item-deleted', itemId);
-  }
+  saveStore();
+  if (panelWindow) panelWindow.webContents.send('item-deleted', itemId);
 });
 
 ipcMain.on('get-csv-data', (event, options) => {
@@ -296,6 +327,7 @@ ipcMain.on('create-list', (event, name) => {
     createdAt: new Date().toISOString()
   };
   lists.push(list);
+  saveStore();
   if (panelWindow) panelWindow.webContents.send('list-created', list);
 });
 
@@ -303,12 +335,14 @@ ipcMain.on('rename-list', (event, { id, name }) => {
   const list = lists.find(l => l.id === id);
   if (list) {
     list.name = name.trim();
+    saveStore();
     if (panelWindow) panelWindow.webContents.send('list-updated', list);
   }
 });
 
 ipcMain.on('delete-list', (event, id) => {
   lists = lists.filter(l => l.id !== id);
+  saveStore();
   if (panelWindow) panelWindow.webContents.send('list-deleted', id);
 });
 
@@ -316,6 +350,7 @@ ipcMain.on('add-item-to-list', (event, { listId, itemId }) => {
   const list = lists.find(l => l.id === listId);
   if (list && !list.itemIds.includes(itemId)) {
     list.itemIds.push(itemId);
+    saveStore();
     if (panelWindow) panelWindow.webContents.send('list-updated', list);
   }
 });
@@ -324,6 +359,7 @@ ipcMain.on('remove-item-from-list', (event, { listId, itemId }) => {
   const list = lists.find(l => l.id === listId);
   if (list) {
     list.itemIds = list.itemIds.filter(id => id !== itemId);
+    saveStore();
     if (panelWindow) panelWindow.webContents.send('list-updated', list);
   }
 });
@@ -333,6 +369,9 @@ ipcMain.on('get-all-lists', (event) => {
 });
 
 app.whenReady().then(() => {
+  storePath = path.join(app.getPath('userData'), 'eazylyst-data.json');
+  loadStore();
+
   createDropTargetWindow();
   createPanelWindow();
   initializeAutoUpdater();

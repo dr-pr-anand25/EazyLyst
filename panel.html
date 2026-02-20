@@ -1079,7 +1079,19 @@
       shell.openExternal('https://www.perplexity.ai/settings/api');
     });
 
-    // Load persisted key on startup
+    // Receive API key restored from main-process store (source of truth)
+    ipcRenderer.on('stored-api-key', (event, key) => {
+      if (key && !apiKeyInput.value) {
+        apiKeyInput.value = key;
+        perplexityKeyKnown = true;
+        apiKeyStatus.textContent = '✓ API key loaded.';
+        apiKeyStatus.className = 'settings-status success';
+        // Keep localStorage in sync as a fallback
+        localStorage.setItem('perplexity-api-key', key);
+      }
+    });
+
+    // Also load from localStorage as immediate fallback (before main replies)
     const savedKey = localStorage.getItem('perplexity-api-key');
     if (savedKey) {
       apiKeyInput.value = savedKey;
