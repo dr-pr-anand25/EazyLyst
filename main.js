@@ -154,13 +154,6 @@ function initializeAutoUpdater() {
     return;
   }
 
-  const runtimeToken = process.env.EAZYLYST_GH_TOKEN || process.env.GH_TOKEN;
-  if (runtimeToken) {
-    autoUpdater.requestHeaders = {
-      Authorization: `token ${runtimeToken}`
-    };
-  }
-
   autoUpdater.autoDownload = true;
   autoUpdater.autoInstallOnAppQuit = true;
 

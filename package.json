@@ -30,7 +30,6 @@
         "provider": "github",
         "owner": "DanPolland8",
         "repo": "EazyLyst",
-        "private": true,
         "releaseType": "release"
       }
     ],
