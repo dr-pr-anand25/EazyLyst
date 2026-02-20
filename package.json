@@ -1,6 +1,6 @@
 {
   "name": "eazylyst",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "List maker software with drag-and-drop categorization",
   "main": "main.js",
   "scripts": {
@@ -49,7 +49,9 @@
     },
     "linux": {
       "icon": "build/icons/icon.png",
-      "target": ["AppImage"],
+      "target": [
+        "AppImage"
+      ],
       "category": "Utility"
     }
   },
