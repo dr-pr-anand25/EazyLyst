@@ -391,6 +391,95 @@
     .add-to-list-option:hover { background: #f0f5ff; color: #4682ff; }
     .add-to-list-option.no-lists { color: #999; cursor: default; font-style: italic; }
     .add-to-list-option.no-lists:hover { background: white; color: #999; }
+
+    /* ── Profile lookup section ── */
+    .profiles-wrapper {
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px solid #f0f0f0;
+    }
+    .profiles-loading {
+      font-size: 11px;
+      color: #aaa;
+      font-style: italic;
+    }
+    .profiles-none {
+      font-size: 11px;
+      color: #ccc;
+    }
+    .profiles-error {
+      font-size: 11px;
+      color: #ff9999;
+    }
+    .profile-badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+    }
+    .profile-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      padding: 3px 9px;
+      border-radius: 10px;
+      font-size: 11px;
+      font-weight: 500;
+      color: white;
+      cursor: pointer;
+      border: none;
+      transition: opacity 0.15s;
+    }
+    .profile-badge:hover { opacity: 0.82; }
+
+    /* ── Settings tab ── */
+    .settings-content {
+      padding: 16px;
+      overflow-y: auto;
+      flex: 1;
+    }
+    .settings-section {
+      background: white;
+      border-radius: 8px;
+      padding: 18px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      margin-bottom: 14px;
+    }
+    .settings-section h3 {
+      font-size: 15px;
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: #333;
+    }
+    .settings-section p {
+      font-size: 13px;
+      color: #666;
+      margin-bottom: 12px;
+      line-height: 1.5;
+    }
+    .settings-section a { color: #4682ff; text-decoration: none; }
+    .settings-section a:hover { text-decoration: underline; }
+    .api-key-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    .api-key-row input {
+      flex: 1;
+      padding: 8px 12px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 13px;
+      font-family: monospace;
+      outline: none;
+    }
+    .api-key-row input:focus { border-color: #4682ff; }
+    .settings-status {
+      font-size: 12px;
+      margin-top: 8px;
+      min-height: 16px;
+    }
+    .settings-status.success { color: #34c759; }
+    .settings-status.error   { color: #ff3b30; }
   </style>
 </head>
 <body>
@@ -405,6 +494,7 @@
   <div class="tab-bar">
     <button class="tab active" data-tab="collected">Collected</button>
     <button class="tab" data-tab="lists">Lists</button>
+    <button class="tab" data-tab="settings">⚙️ Settings</button>
   </div>
 
   <!-- Collected tab -->
@@ -427,6 +517,35 @@
       <div class="lists-empty-state">
         <div class="empty-state-icon">📝</div>
         <p>Create a list to organise your collected items</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Settings tab -->
+  <div id="tab-settings" class="tab-content">
+    <div class="settings-content">
+      <div class="settings-section">
+        <h3>🔍 Profile Lookup — Perplexity AI</h3>
+        <p>
+          When you drop a <strong>Name</strong> or <strong>Business</strong> item, EazyLyst will
+          automatically search for social media and profile links using Perplexity AI.<br><br>
+          You need a <a id="plx-key-link" href="#">Perplexity API key</a> to use this feature.
+          Keys start with <code>pplx-</code>.
+        </p>
+        <div class="api-key-row">
+          <input type="password" id="api-key-input" placeholder="pplx-…" autocomplete="off" />
+          <button id="save-api-key-btn" class="btn-primary">Save</button>
+          <button id="clear-api-key-btn" class="btn-small">Clear</button>
+        </div>
+        <div id="api-key-status" class="settings-status"></div>
+      </div>
+      <div class="settings-section">
+        <h3>What gets searched?</h3>
+        <p>
+          👤 <strong>Names</strong> → LinkedIn, X / Twitter, Instagram, Facebook, GitHub, personal website<br>
+          🏢 <strong>Business</strong> → Company website, LinkedIn, X / Twitter, Instagram, Facebook, YouTube<br>
+          🔗 <strong>Links</strong> → skipped (already a URL)
+        </p>
       </div>
     </div>
   </div>
@@ -474,13 +593,59 @@
   </div>
 
   <script>
-    const { ipcRenderer } = require('electron');
+    const { ipcRenderer, shell } = require('electron');
     const fs = require('fs');
     const path = require('path');
     const { dialog } = require('electron').remote || require('@electron/remote');
 
     let items = [];
     let overlayVisible = true;
+    let perplexityKeyKnown = false;
+    const itemProfilesState = new Map(); // itemId → { status: 'loading'|'done'|'error', profiles?, error? }
+
+    const PLATFORM_META = {
+      linkedin:  { icon: '💼', label: 'LinkedIn',   color: '#0077B5' },
+      twitter:   { icon: '𝕏',  label: 'X',          color: '#111111' },
+      instagram: { icon: '📸', label: 'Instagram',  color: '#E1306C' },
+      facebook:  { icon: '📘', label: 'Facebook',   color: '#1877F2' },
+      website:   { icon: '🌐', label: 'Website',    color: '#5C5C5C' },
+      github:    { icon: '🐙', label: 'GitHub',     color: '#24292F' },
+      youtube:   { icon: '▶️',  label: 'YouTube',   color: '#FF0000' }
+    };
+
+    function buildProfilesHTML(itemId) {
+      if (!perplexityKeyKnown) return '';
+      const state = itemProfilesState.get(itemId);
+      if (!state) return '';
+      if (state.status === 'loading') {
+        return '<div class="profiles-wrapper"><span class="profiles-loading">🔍 Finding profiles…</span></div>';
+      }
+      if (state.status === 'error') {
+        return `<div class="profiles-wrapper"><span class="profiles-error">⚠ Profile lookup failed</span></div>`;
+      }
+      if (state.status === 'done') {
+        const profiles = state.profiles || {};
+        const entries = Object.entries(profiles).filter(([, v]) => v);
+        if (entries.length === 0) {
+          return '<div class="profiles-wrapper"><span class="profiles-none">No profiles found</span></div>';
+        }
+        const badges = entries.map(([platform, url]) => {
+          const meta = PLATFORM_META[platform] || { icon: '🔗', label: platform, color: '#888' };
+          return `<button class="profile-badge" style="background:${meta.color}" data-url="${escapeHtml(url)}" title="${escapeHtml(url)}">${meta.icon} ${meta.label}</button>`;
+        }).join('');
+        return `<div class="profiles-wrapper"><div class="profile-badges">${badges}</div></div>`;
+      }
+      return '';
+    }
+
+    function updateProfilesSection(itemId) {
+      const el = document.querySelector(`.profiles-outer[data-id="${itemId}"]`);
+      if (!el) return;
+      el.innerHTML = buildProfilesHTML(itemId);
+      el.querySelectorAll('.profile-badge').forEach(badge => {
+        badge.addEventListener('click', () => shell.openExternal(badge.dataset.url));
+      });
+    }
 
     const itemsContainer = document.getElementById('items-container');
     const toggleOverlayBtn = document.getElementById('toggleOverlay');
@@ -547,6 +712,7 @@
           <div class="item-value" data-id="${item.id}">${escapeHtml(item.value)}</div>
           <input type="text" class="item-input" data-id="${item.id}" value="${escapeHtml(item.value)}">
           <div class="item-timestamp">${formatTimestamp(item.timestamp)}</div>
+          <div class="profiles-outer" data-id="${item.id}">${buildProfilesHTML(item.id)}</div>
         </div>
       `).join('');
 
@@ -573,6 +739,11 @@
           e.stopPropagation();
           toggleAddToListDropdown(parseInt(btn.dataset.id));
         });
+      });
+
+      // Profile badge click handlers (open in default browser)
+      document.querySelectorAll('.profile-badge').forEach(badge => {
+        badge.addEventListener('click', () => shell.openExternal(badge.dataset.url));
       });
     }
 
@@ -622,6 +793,22 @@
         ipcRenderer.send('delete-item', id);
       }
     }
+
+    // ── Profile lookup IPC ────────────────────────────────────────────────────
+    ipcRenderer.on('item-profiles-loading', (event, { itemId }) => {
+      itemProfilesState.set(itemId, { status: 'loading' });
+      updateProfilesSection(itemId);
+    });
+
+    ipcRenderer.on('item-profiles', (event, { itemId, profiles }) => {
+      itemProfilesState.set(itemId, { status: 'done', profiles });
+      updateProfilesSection(itemId);
+    });
+
+    ipcRenderer.on('item-profiles-error', (event, { itemId, error }) => {
+      itemProfilesState.set(itemId, { status: 'error', error });
+      updateProfilesSection(itemId);
+    });
 
     // Toggle overlay
     toggleOverlayBtn.addEventListener('click', () => {
@@ -880,6 +1067,52 @@
       }
       dropdown.classList.add('open');
     }
+
+    // ── Settings tab ────────────────────────────────────────────────────
+    const apiKeyInput     = document.getElementById('api-key-input');
+    const saveApiKeyBtn   = document.getElementById('save-api-key-btn');
+    const clearApiKeyBtn  = document.getElementById('clear-api-key-btn');
+    const apiKeyStatus    = document.getElementById('api-key-status');
+
+    document.getElementById('plx-key-link').addEventListener('click', e => {
+      e.preventDefault();
+      shell.openExternal('https://www.perplexity.ai/settings/api');
+    });
+
+    // Load persisted key on startup
+    const savedKey = localStorage.getItem('perplexity-api-key');
+    if (savedKey) {
+      apiKeyInput.value = savedKey;
+      perplexityKeyKnown = true;
+      ipcRenderer.send('set-api-key', savedKey);
+      apiKeyStatus.textContent = '✓ API key loaded.';
+      apiKeyStatus.className = 'settings-status success';
+    }
+
+    saveApiKeyBtn.addEventListener('click', () => {
+      const key = apiKeyInput.value.trim();
+      if (!key) {
+        apiKeyStatus.textContent = 'Please enter an API key.';
+        apiKeyStatus.className = 'settings-status error';
+        return;
+      }
+      localStorage.setItem('perplexity-api-key', key);
+      ipcRenderer.send('set-api-key', key);
+      perplexityKeyKnown = true;
+      apiKeyStatus.textContent = '✓ Saved! Profile lookups will run on new drops.';
+      apiKeyStatus.className = 'settings-status success';
+      setTimeout(() => { apiKeyStatus.textContent = ''; }, 4000);
+    });
+
+    clearApiKeyBtn.addEventListener('click', () => {
+      localStorage.removeItem('perplexity-api-key');
+      ipcRenderer.send('set-api-key', '');
+      perplexityKeyKnown = false;
+      apiKeyInput.value = '';
+      apiKeyStatus.textContent = 'Key cleared.';
+      apiKeyStatus.className = 'settings-status';
+      setTimeout(() => { apiKeyStatus.textContent = ''; }, 3000);
+    });
 
     document.addEventListener('click', () =>
       document.querySelectorAll('.add-to-list-dropdown.open').forEach(d => d.classList.remove('open'))
