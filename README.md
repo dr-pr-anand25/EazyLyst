@@ -69,6 +69,27 @@ npm run build:mac
 
 Build artifacts are created in the `dist` folder.
 
+## Automatic Updates
+
+- The packaged app now checks for updates automatically at startup.
+- If an update is available, it downloads in the background and prompts the user to restart.
+- Update metadata is sourced from GitHub Releases for this repository.
+
+### Private repo note
+
+Because this repository is private, the running app needs a GitHub token with access to this repo to fetch releases at runtime.
+
+- Supported environment variables: `EAZYLYST_GH_TOKEN` (preferred) or `GH_TOKEN`
+- Example (macOS/Linux): `export EAZYLYST_GH_TOKEN=ghp_xxx`
+- Example (Windows PowerShell): `$env:EAZYLYST_GH_TOKEN = "ghp_xxx"`
+
+### Releasing a new version
+
+1. Bump the app version in `package.json`
+2. Push to `main`
+3. Create and push a tag (example: `v1.0.3`)
+4. The `Release Desktop Artifacts` workflow builds and publishes release assets
+
 ## Usage
 
 1. Start the application

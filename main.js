@@ -1,6 +1,7 @@
-const { app, BrowserWindow, ipcMain, screen } = require('electron');
+const { app, BrowserWindow, ipcMain, screen, dialog } = require('electron');
 const path = require('path');
 const remoteMain = require('@electron/remote/main');
+const { autoUpdater } = require('electron-updater');
 const { classify } = require('./classify');
 
 remoteMain.initialize();
@@ -9,6 +10,70 @@ let dropTargetWindow = null;
 let panelWindow = null;
 let collectedItems = [];
 let itemIdCounter = 1;
+
+function broadcastUpdaterStatus(status) {
+  if (panelWindow && !panelWindow.isDestroyed()) {
+    panelWindow.webContents.send('updater-status', status);
+  }
+}
+
+function initializeAutoUpdater() {
+  if (!app.isPackaged) {
+    return;
+  }
+
+  const runtimeToken = process.env.EAZYLYST_GH_TOKEN || process.env.GH_TOKEN;
+  if (runtimeToken) {
+    autoUpdater.requestHeaders = {
+      Authorization: `token ${runtimeToken}`
+    };
+  }
+
+  autoUpdater.autoDownload = true;
+  autoUpdater.autoInstallOnAppQuit = true;
+
+  autoUpdater.on('checking-for-update', () => {
+    broadcastUpdaterStatus({ stage: 'checking' });
+  });
+
+  autoUpdater.on('update-available', (info) => {
+    broadcastUpdaterStatus({ stage: 'available', version: info?.version || null });
+  });
+
+  autoUpdater.on('update-not-available', () => {
+    broadcastUpdaterStatus({ stage: 'not-available' });
+  });
+
+  autoUpdater.on('download-progress', (progress) => {
+    broadcastUpdaterStatus({
+      stage: 'downloading',
+      percent: Math.round(progress.percent || 0)
+    });
+  });
+
+  autoUpdater.on('error', (err) => {
+    broadcastUpdaterStatus({ stage: 'error', message: err?.message || 'Update failed' });
+  });
+
+  autoUpdater.on('update-downloaded', async () => {
+    broadcastUpdaterStatus({ stage: 'downloaded' });
+    const result = await dialog.showMessageBox({
+      type: 'info',
+      buttons: ['Restart now', 'Later'],
+      defaultId: 0,
+      cancelId: 1,
+      title: 'Update ready',
+      message: 'A new version has been downloaded.',
+      detail: 'Restart EazyLyst to apply the update.'
+    });
+
+    if (result.response === 0) {
+      autoUpdater.quitAndInstall();
+    }
+  });
+
+  autoUpdater.checkForUpdatesAndNotify();
+}
 
 function createDropTargetWindow() {
   const primaryDisplay = screen.getPrimaryDisplay();
@@ -122,6 +187,7 @@ ipcMain.on('get-csv-data', (event, options) => {
 app.whenReady().then(() => {
   createDropTargetWindow();
   createPanelWindow();
+  initializeAutoUpdater();
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
