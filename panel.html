@@ -480,15 +480,26 @@
     }
     .settings-status.success { color: #34c759; }
     .settings-status.error   { color: #ff3b30; }
+    .folder-path {
+      font-family: monospace;
+      font-size: 12px;
+      color: #333;
+      background: #f3f4f6;
+      border-radius: 4px;
+      padding: 8px 10px;
+      margin-bottom: 10px;
+      word-break: break-all;
+    }
+    .folder-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
   </style>
 </head>
 <body>
   <header>
     <h1>EazyLyst</h1>
-    <div class="controls">
-      <button id="toggleOverlay" class="btn-secondary">Hide Overlay</button>
-      <button id="exportBtn" class="btn-primary">Export CSV</button>
-    </div>
   </header>
 
   <div class="tab-bar">
@@ -502,7 +513,7 @@
     <div id="items-container">
       <div class="empty-state">
         <div class="empty-state-icon">📋</div>
-        <p>Drop items into the circular overlay to start collecting</p>
+        <p>Drop items onto the circular drop box to start collecting</p>
       </div>
     </div>
   </div>
@@ -524,6 +535,20 @@
   <!-- Settings tab -->
   <div id="tab-settings" class="tab-content">
     <div class="settings-content">
+      <div class="settings-section">
+        <h3>📁 Shortcut folder</h3>
+        <p>
+          Every item you drop is saved as a clickable shortcut (<code>.url</code> file)
+          in this folder.
+        </p>
+        <div id="shortcut-folder-path" class="folder-path">Loading…</div>
+        <div class="folder-row">
+          <button id="choose-folder-btn" class="btn-primary">Choose folder…</button>
+          <button id="open-folder-btn" class="btn-small">Open</button>
+          <button id="reset-folder-btn" class="btn-small">Reset to default</button>
+        </div>
+        <div id="folder-status" class="settings-status"></div>
+      </div>
       <div class="settings-section">
         <h3>🔍 Profile Lookup — Perplexity AI</h3>
         <p>
@@ -550,56 +575,13 @@
     </div>
   </div>
 
-  <!-- Export Modal -->
-  <div id="exportModal" class="export-modal">
-    <div class="modal-content">
-      <div class="modal-header">Export Options</div>
-      <p>Select columns to include in your CSV export:</p>
-      <div class="export-options">
-        <div class="export-option">
-          <input type="checkbox" id="opt-category" checked disabled>
-          <label for="opt-category">Category (required)</label>
-        </div>
-        <div class="export-option">
-          <input type="checkbox" id="opt-value" checked disabled>
-          <label for="opt-value">Value (required)</label>
-        </div>
-        <div class="export-option">
-          <input type="checkbox" id="opt-timestamp" checked>
-          <label for="opt-timestamp">Timestamp</label>
-        </div>
-        <div class="export-option">
-          <input type="checkbox" id="opt-id" checked>
-          <label for="opt-id">ID</label>
-        </div>
-        <div class="export-option">
-          <input type="checkbox" id="opt-length" checked>
-          <label for="opt-length">Value Length</label>
-        </div>
-        <div class="export-option">
-          <input type="checkbox" id="opt-date-only" checked>
-          <label for="opt-date-only">Date Only</label>
-        </div>
-        <div class="export-option">
-          <input type="checkbox" id="opt-time-only" checked>
-          <label for="opt-time-only">Time Only</label>
-        </div>
-      </div>
-      <div class="modal-buttons">
-        <button id="cancelExport" class="btn-small">Cancel</button>
-        <button id="confirmExport" class="btn-primary">Export</button>
-      </div>
-    </div>
-  </div>
 
   <script>
     const { ipcRenderer, shell } = require('electron');
     const fs = require('fs');
     const path = require('path');
-    const { dialog } = require('electron').remote || require('@electron/remote');
 
     let items = [];
-    let overlayVisible = true;
     let perplexityKeyKnown = false;
     const itemProfilesState = new Map(); // itemId → { status: 'loading'|'done'|'error', profiles?, error? }
 
@@ -648,11 +630,6 @@
     }
 
     const itemsContainer = document.getElementById('items-container');
-    const toggleOverlayBtn = document.getElementById('toggleOverlay');
-    const exportBtn = document.getElementById('exportBtn');
-    const exportModal = document.getElementById('exportModal');
-    const cancelExportBtn = document.getElementById('cancelExport');
-    const confirmExportBtn = document.getElementById('confirmExport');
 
     // Request all items and lists on load
     ipcRenderer.send('get-all-items');
@@ -690,7 +667,7 @@
         itemsContainer.innerHTML = `
           <div class="empty-state">
             <div class="empty-state-icon">📋</div>
-            <p>Drop items into the circular overlay to start collecting</p>
+            <p>Drop items onto the circular drop box to start collecting</p>
           </div>
         `;
         return;
@@ -810,95 +787,6 @@
       updateProfilesSection(itemId);
     });
 
-    // Toggle overlay
-    toggleOverlayBtn.addEventListener('click', () => {
-      overlayVisible = !overlayVisible;
-      ipcRenderer.send('toggle-overlay', overlayVisible);
-      toggleOverlayBtn.textContent = overlayVisible ? 'Hide Overlay' : 'Show Overlay';
-    });
-
-    // Export functionality
-    exportBtn.addEventListener('click', () => {
-      exportModal.classList.add('active');
-    });
-
-    cancelExportBtn.addEventListener('click', () => {
-      exportModal.classList.remove('active');
-    });
-
-    confirmExportBtn.addEventListener('click', () => {
-      const options = {
-        category: true, // Always included
-        value: true, // Always included
-        timestamp: document.getElementById('opt-timestamp').checked,
-        id: document.getElementById('opt-id').checked,
-        length: document.getElementById('opt-length').checked,
-        dateOnly: document.getElementById('opt-date-only').checked,
-        timeOnly: document.getElementById('opt-time-only').checked
-      };
-
-      exportCSV(options);
-      exportModal.classList.remove('active');
-    });
-
-    function exportCSV(options) {
-      if (items.length === 0) {
-        alert('No items to export');
-        return;
-      }
-
-      // Build CSV header
-      let headers = ['Category', 'Value'];
-      if (options.id) headers.push('ID');
-      if (options.timestamp) headers.push('Timestamp');
-      if (options.dateOnly) headers.push('Date');
-      if (options.timeOnly) headers.push('Time');
-      if (options.length) headers.push('Length');
-
-      // Build CSV rows
-      const rows = items.map(item => {
-        const row = [
-          item.category,
-          `"${item.value.replace(/"/g, '""')}"`
-        ];
-        
-        if (options.id) row.push(item.id);
-        if (options.timestamp) row.push(item.timestamp);
-        if (options.dateOnly) {
-          const date = new Date(item.timestamp);
-          row.push(date.toLocaleDateString());
-        }
-        if (options.timeOnly) {
-          const date = new Date(item.timestamp);
-          row.push(date.toLocaleTimeString());
-        }
-        if (options.length) row.push(item.value.length);
-        
-        return row.join(',');
-      });
-
-      const csv = [headers.join(','), ...rows].join('\n');
-
-      // Save file
-      const { dialog } = require('@electron/remote');
-      
-      dialog.showSaveDialog({
-        title: 'Export CSV',
-        defaultPath: 'eazylyst-export.csv',
-        filters: [
-          { name: 'CSV Files', extensions: ['csv'] },
-          { name: 'All Files', extensions: ['*'] }
-        ]
-      }).then(result => {
-        if (!result.canceled && result.filePath) {
-          fs.writeFileSync(result.filePath, csv, 'utf-8');
-          alert('CSV exported successfully!');
-        }
-      }).catch(err => {
-        console.error('Export error:', err);
-        alert('Error exporting CSV: ' + err.message);
-      });
-    }
 
     // ── Tab switching ──────────────────────────────────────────────────────
     document.querySelectorAll('.tab').forEach(tab => {
@@ -1125,6 +1013,35 @@
       apiKeyStatus.className = 'settings-status';
       setTimeout(() => { apiKeyStatus.textContent = ''; }, 3000);
     });
+
+    // ── Shortcut folder ─────────────────────────────────────────────────
+    const folderPathEl   = document.getElementById('shortcut-folder-path');
+    const folderStatusEl = document.getElementById('folder-status');
+    let folderStatusTimer = null;
+
+    ipcRenderer.send('get-shortcut-folder');
+
+    ipcRenderer.on('shortcut-folder', (event, { folder, message, error }) => {
+      folderPathEl.textContent = folder;
+      clearTimeout(folderStatusTimer);
+      if (error) {
+        folderStatusEl.textContent = error;
+        folderStatusEl.className = 'settings-status error';
+      } else if (message) {
+        folderStatusEl.textContent = message;
+        folderStatusEl.className = 'settings-status success';
+        folderStatusTimer = setTimeout(() => { folderStatusEl.textContent = ''; }, 4000);
+      } else {
+        folderStatusEl.textContent = '';
+      }
+    });
+
+    document.getElementById('choose-folder-btn').addEventListener('click', () =>
+      ipcRenderer.send('choose-shortcut-folder'));
+    document.getElementById('open-folder-btn').addEventListener('click', () =>
+      ipcRenderer.send('open-shortcut-folder'));
+    document.getElementById('reset-folder-btn').addEventListener('click', () =>
+      ipcRenderer.send('reset-shortcut-folder'));
 
     document.addEventListener('click', () =>
       document.querySelectorAll('.add-to-list-dropdown.open').forEach(d => d.classList.remove('open'))

@@ -1,55 +1,56 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="UTF-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'unsafe-inline'; script-src 'unsafe-inline'">
-  <title>Drop Target</title>
-  <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
+<meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'unsafe-inline'; script-src 'unsafe-inline'">
+<title>Drop Target</title>
+<style>
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
 
-    body {
-      width: 75px;
-      height: 75px;
-      overflow: hidden;
-      background: transparent;
-      -webkit-app-region: drag;
-    }
+  /* No -webkit-app-region here: window dragging is handled in JavaScript
+     below so that HTML5 drop events keep working on Windows. */
+  body {
+    width: 75px;
+    height: 75px;
+    overflow: hidden;
+    background: transparent;
+    user-select: none;
+  }
 
-    #drop-circle {
-      width: 75px;
-      height: 75px;
-      border-radius: 50%;
-      background: rgba(70, 130, 255, 0.15);
-      border: 2px dashed rgba(255, 255, 255, 0.4);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: rgba(255, 255, 255, 0.7);
-      font-family: Arial, sans-serif;
-      font-size: 10px;
-      font-weight: bold;
-      text-align: center;
-      transition: all 0.3s ease;
-      cursor: move;
-      -webkit-app-region: no-drag;
-    }
+  #drop-circle {
+    width: 75px;
+    height: 75px;
+    border-radius: 50%;
+    background: rgba(70, 130, 255, 0.15);
+    border: 2px dashed rgba(255, 255, 255, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: rgba(255, 255, 255, 0.7);
+    font-family: Arial, sans-serif;
+    font-size: 10px;
+    font-weight: bold;
+    text-align: center;
+    transition: all 0.3s ease;
+    cursor: move;
+  }
 
-    #drop-circle.drag-over {
-      background: rgba(70, 200, 130, 0.35);
-      border-color: rgba(255, 255, 255, 0.7);
-      transform: scale(1.1);
-    }
+  #drop-circle.drag-over {
+    background: rgba(70, 200, 130, 0.35);
+    border-color: rgba(255, 255, 255, 0.7);
+    transform: scale(1.1);
+  }
 
-    #drop-text {
-      pointer-events: none;
-      padding: 5px;
-      font-size: 9px;
-    }
-  </style>
+  #drop-text {
+    pointer-events: none;
+    padding: 5px;
+    font-size: 9px;
+  }
+</style>
 </head>
 <body>
   <div id="drop-circle">
@@ -57,10 +58,46 @@
   </div>
 
   <script>
-    const { ipcRenderer } = require('electron');
+    // Inside Electron, use the real ipcRenderer. In a plain browser (e.g. a
+    // preview pane) `require` doesn't exist, so use a stub that just logs.
+    const ipcRenderer = (typeof require === 'function')
+      ? require('electron').ipcRenderer
+      : { send: (channel, data) => console.log('[preview] ipc send:', channel, data) };
+
     const dropCircle = document.getElementById('drop-circle');
 
-    // Prevent default drag behaviors
+    // ------------------------------------------------------------------
+    // Manual window dragging (keeps HTML5 drop events working)
+    // ------------------------------------------------------------------
+    let dragging = false;
+    let lastX = 0;
+    let lastY = 0;
+
+    dropCircle.addEventListener('mousedown', (e) => {
+      if (e.button !== 0) return; // left button only
+      dragging = true;
+      lastX = e.screenX;
+      lastY = e.screenY;
+    });
+
+    window.addEventListener('mousemove', (e) => {
+      if (!dragging) return;
+      const dx = e.screenX - lastX;
+      const dy = e.screenY - lastY;
+      if (dx === 0 && dy === 0) return;
+      lastX = e.screenX;
+      lastY = e.screenY;
+      ipcRenderer.send('drop-target-move', { dx, dy });
+    });
+
+    window.addEventListener('mouseup', () => { dragging = false; });
+    window.addEventListener('blur', () => { dragging = false; });
+
+    // ------------------------------------------------------------------
+    // Drag-and-drop capture
+    // ------------------------------------------------------------------
+
+    // Prevent default drag behaviors and show hover feedback
     document.addEventListener('dragover', (e) => {
       e.preventDefault();
       e.stopPropagation();
@@ -80,7 +117,7 @@
 
       // Get dropped text or URL
       let droppedText = '';
-      
+
       if (e.dataTransfer.types.includes('text/uri-list')) {
         droppedText = e.dataTransfer.getData('text/uri-list');
       } else if (e.dataTransfer.types.includes('text/plain')) {
@@ -92,19 +129,16 @@
         if (urlMatch) {
           droppedText = urlMatch[1];
         } else {
-          // Use text/plain if available, otherwise create a temporary DOM element to safely extract text
-          droppedText = e.dataTransfer.getData('text/plain');
-          if (!droppedText) {
-            const tempDiv = document.createElement('div');
-            tempDiv.innerHTML = html;
-            droppedText = tempDiv.textContent || tempDiv.innerText || '';
-          }
+          // Fall back to extracting plain text from the HTML
+          const tempDiv = document.createElement('div');
+          tempDiv.innerHTML = html;
+          droppedText = tempDiv.textContent || tempDiv.innerText || '';
         }
       }
 
       if (droppedText) {
         ipcRenderer.send('item-dropped', droppedText.trim());
-        
+
         // Visual feedback
         dropCircle.style.background = 'rgba(70, 200, 130, 0.5)';
         setTimeout(() => {
