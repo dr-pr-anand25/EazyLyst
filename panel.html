@@ -500,6 +500,9 @@
 <body>
   <header>
     <h1>EazyLyst</h1>
+    <div class="controls">
+      <button id="toggleOverlay" class="btn-secondary">Hide Dropbox</button>
+    </div>
   </header>
 
   <div class="tab-bar">
@@ -1042,6 +1045,24 @@
       ipcRenderer.send('open-shortcut-folder'));
     document.getElementById('reset-folder-btn').addEventListener('click', () =>
       ipcRenderer.send('reset-shortcut-folder'));
+
+    // ── Hide / show the drop box ────────────────────────────────────────
+    const toggleOverlayBtn = document.getElementById('toggleOverlay');
+    let dropboxVisible = true;
+
+    function showDropboxState(visible) {
+      dropboxVisible = visible;
+      toggleOverlayBtn.textContent = visible ? 'Hide Dropbox' : 'Show Dropbox';
+    }
+
+    toggleOverlayBtn.addEventListener('click', () => {
+      showDropboxState(!dropboxVisible);
+      ipcRenderer.send('toggle-overlay', dropboxVisible);
+    });
+
+    // Keeps the label right when the main process shows the box itself
+    // (for example when the app is started a second time)
+    ipcRenderer.on('overlay-visibility', (event, visible) => showDropboxState(!!visible));
 
     document.addEventListener('click', () =>
       document.querySelectorAll('.add-to-list-dropdown.open').forEach(d => d.classList.remove('open'))

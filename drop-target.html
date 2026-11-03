@@ -94,6 +94,14 @@
     window.addEventListener('blur', () => { dragging = false; });
 
     // ------------------------------------------------------------------
+    // Double-click: open the folder where the shortcuts are saved
+    // ------------------------------------------------------------------
+    dropCircle.title = 'Drop a link or text here. Double-click to open the shortcuts folder.';
+    dropCircle.addEventListener('dblclick', () => {
+      ipcRenderer.send('open-shortcut-folder');
+    });
+
+    // ------------------------------------------------------------------
     // Drag-and-drop capture
     // ------------------------------------------------------------------
 

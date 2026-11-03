@@ -5,6 +5,7 @@ const { autoUpdater } = require('electron-updater');
 const { classify } = require('./classify');
 const https = require('https');
 const fs   = require('fs');
+const { execFile } = require('child_process');
 
 remoteMain.initialize();
 
@@ -17,6 +18,66 @@ let listIdCounter    = 1;
 let perplexityApiKey = null;
 let storePath        = null;
 let shortcutFolder   = null; // null = default folder (Documents\EazyLyst Links)
+
+// ── Single instance ───────────────────────────────────────────────────────────
+// Only one EazyLyst may run. Starting it again just brings the existing one
+// forward (and shows the drop box if it was hidden).
+const gotSingleInstanceLock = app.requestSingleInstanceLock();
+if (!gotSingleInstanceLock) {
+  app.quit();
+}
+
+app.on('second-instance', () => {
+  if (dropTargetWindow && !dropTargetWindow.isDestroyed()) {
+    dropTargetWindow.show();
+    notifyOverlayVisibility(true);
+  }
+  if (panelWindow && !panelWindow.isDestroyed()) {
+    if (panelWindow.isMinimized()) panelWindow.restore();
+    panelWindow.show();
+    panelWindow.focus();
+  }
+});
+
+// Tells the panel whether the drop box is shown, so its button label stays right
+function notifyOverlayVisibility(visible) {
+  if (panelWindow && !panelWindow.isDestroyed()) {
+    panelWindow.webContents.send('overlay-visibility', visible);
+  }
+}
+
+// ── Drop box position ─────────────────────────────────────────────────────────
+// The drop box starts near the top of the screen (close to a browser's address
+// bar) and remembers where you drag it. Adjust DEFAULT_TOP / DEFAULT_OFFSET_X
+// if you want a different starting spot.
+const DROP_SIZE        = 75;
+const DEFAULT_TOP      = 100; // pixels from the top of the screen
+const DEFAULT_OFFSET_X = 0;   // pixels right (+) or left (-) of the screen centre
+
+let dropTargetPos = null;     // saved {x, y}; null = use the default spot
+let savePosTimer  = null;
+
+function defaultDropTargetPos() {
+  const wa = screen.getPrimaryDisplay().workArea;
+  return {
+    x: Math.round(wa.x + wa.width / 2 - DROP_SIZE / 2 + DEFAULT_OFFSET_X),
+    y: wa.y + DEFAULT_TOP
+  };
+}
+
+// Uses the saved position only if it is still on a connected screen
+function resolveDropTargetPos() {
+  if (dropTargetPos) {
+    const cx = dropTargetPos.x + DROP_SIZE / 2;
+    const cy = dropTargetPos.y + DROP_SIZE / 2;
+    const onScreen = screen.getAllDisplays().some(d => {
+      const wa = d.workArea;
+      return cx >= wa.x && cx <= wa.x + wa.width && cy >= wa.y && cy <= wa.y + wa.height;
+    });
+    if (onScreen) return dropTargetPos;
+  }
+  return defaultDropTargetPos();
+}
 
 // ── Data persistence ──────────────────────────────────────────────────────────
 function loadStore() {
@@ -32,6 +93,8 @@ function loadStore() {
       perplexityApiKey = data.perplexityApiKey;
     if (typeof data.shortcutFolder === 'string' && data.shortcutFolder)
       shortcutFolder = data.shortcutFolder;
+    if (data.dropTargetPos && Number.isFinite(data.dropTargetPos.x) && Number.isFinite(data.dropTargetPos.y))
+      dropTargetPos = { x: data.dropTargetPos.x, y: data.dropTargetPos.y };
   } catch (e) {
     // Corrupt store — start fresh, old file will be overwritten on next save
     console.warn('EazyLyst: could not load store:', e.message);
@@ -47,7 +110,8 @@ function saveStore() {
       lists,
       listIdCounter,
       perplexityApiKey: perplexityApiKey || '',
-      shortcutFolder:   shortcutFolder || ''
+      shortcutFolder:   shortcutFolder || '',
+      dropTargetPos:    dropTargetPos
     };
     fs.writeFileSync(storePath, JSON.stringify(data, null, 2), 'utf8');
   } catch (e) {
@@ -208,11 +272,13 @@ function createDropTargetWindow() {
   const primaryDisplay = screen.getPrimaryDisplay();
   const { width, height } = primaryDisplay.workAreaSize;
 
+  const startPos = resolveDropTargetPos();
+
   dropTargetWindow = new BrowserWindow({
-    width: 75,
-    height: 75,
-    x: Math.floor(width / 2 - 37),
-    y: Math.floor(height / 2 - 37),
+    width: DROP_SIZE,
+    height: DROP_SIZE,
+    x: startPos.x,
+    y: startPos.y,
     transparent: true,
     frame: false,
     alwaysOnTop: true,
@@ -225,8 +291,8 @@ function createDropTargetWindow() {
   });
 
   dropTargetWindow.setIgnoreMouseEvents(false);
-  // Keep the drop box above everything (even full-screen apps). There is no
-  // hide/show control any more, so it is always available.
+  // Keep the drop box above everything (even full-screen apps). It can be
+  // hidden and shown again with the button in the panel header.
   dropTargetWindow.setAlwaysOnTop(true, 'screen-saver');
   dropTargetWindow.loadFile('drop-target.html');
   
@@ -466,16 +532,82 @@ ipcMain.on('reset-shortcut-folder', (event) => {
   event.reply('shortcut-folder', { folder: getShortcutFolder(), message: '✓ Back to the default folder.' });
 });
 
-ipcMain.on('open-shortcut-folder', async (event) => {
-  const dir = getShortcutFolder();
-  try { fs.mkdirSync(dir, { recursive: true }); } catch { /* shell.openPath reports the problem */ }
-  const err = await shell.openPath(dir);
-  if (err) event.reply('shortcut-folder', { folder: dir, error: 'Could not open folder: ' + err });
+// ── Open the shortcuts folder without piling up windows ───────────────────────
+// Windows PowerShell script: looks for an Explorer window (or tab) that already
+// shows the folder in the EAZY_DIR environment variable and brings it to the
+// front. Exit code 0 = found and focused, 1 = no such window is open.
+const FOCUS_EXPLORER_PS = `
+$target = $env:EAZY_DIR.TrimEnd('\\')
+Add-Type -TypeDefinition @"
+using System;
+using System.Runtime.InteropServices;
+public class EazyWin {
+  [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr h, int c);
+  [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr h);
+  [DllImport("user32.dll")] public static extern bool IsIconic(IntPtr h);
+}
+"@
+$found = $null
+foreach ($w in (New-Object -ComObject Shell.Application).Windows()) {
+  try {
+    $p = $w.Document.Folder.Self.Path
+    if ($p -and ($p.TrimEnd('\\') -ieq $target)) { $found = $w; break }
+  } catch { }
+}
+if (-not $found) { exit 1 }
+$h = [IntPtr]$found.HWND
+if ([EazyWin]::IsIconic($h)) { [void][EazyWin]::ShowWindow($h, 9) }
+(New-Object -ComObject WScript.Shell).SendKeys('%')
+[void][EazyWin]::SetForegroundWindow($h)
+exit 0
+`;
+
+// Resolves true if an Explorer window for `dir` was already open and was focused
+function focusExistingExplorer(dir) {
+  return new Promise((resolve) => {
+    const encoded = Buffer.from(FOCUS_EXPLORER_PS, 'utf16le').toString('base64');
+    execFile(
+      'powershell.exe',
+      ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-EncodedCommand', encoded],
+      { env: { ...process.env, EAZY_DIR: dir }, windowsHide: true, timeout: 8000 },
+      (err) => resolve(!err)   // any error (including exit code 1) = open a new window
+    );
+  });
+}
+
+let openingFolder = false; // ignores extra double-clicks while a lookup is running
+
+async function openShortcutFolder(event) {
+  if (openingFolder) return;
+  openingFolder = true;
+  try {
+    const dir = getShortcutFolder();
+    try { fs.mkdirSync(dir, { recursive: true }); } catch { /* shell.openPath reports the problem */ }
+    if (process.platform === 'win32' && await focusExistingExplorer(dir)) return;
+    const err = await shell.openPath(dir);
+    if (err && event) event.reply('shortcut-folder', { folder: dir, error: 'Could not open folder: ' + err });
+  } finally {
+    openingFolder = false;
+  }
+}
+
+ipcMain.on('open-shortcut-folder', (event) => {
+  openShortcutFolder(event);
 });
 
 ipcMain.on('set-api-key', (event, key) => {
   perplexityApiKey = key && key.trim() ? key.trim() : null;
   saveStore();
+});
+
+// Hide / show the drop box (button in the panel header)
+ipcMain.on('toggle-overlay', (event, visible) => {
+  if (!dropTargetWindow || dropTargetWindow.isDestroyed()) return;
+  if (visible) {
+    dropTargetWindow.show();
+  } else {
+    dropTargetWindow.hide();
+  }
 });
 
 // Move the drop target window while the user drags the circle.
@@ -484,7 +616,12 @@ ipcMain.on('drop-target-move', (event, { dx, dy }) => {
   if (!dropTargetWindow || dropTargetWindow.isDestroyed()) return;
   const b = dropTargetWindow.getBounds();
   // Fixed width/height avoids Windows DPI resize glitches while moving
-  dropTargetWindow.setBounds({ x: b.x + dx, y: b.y + dy, width: 75, height: 75 });
+  dropTargetWindow.setBounds({ x: b.x + dx, y: b.y + dy, width: DROP_SIZE, height: DROP_SIZE });
+
+  // Remember the new position (saved shortly after the dragging stops)
+  dropTargetPos = { x: b.x + dx, y: b.y + dy };
+  clearTimeout(savePosTimer);
+  savePosTimer = setTimeout(saveStore, 400);
 });
 
 ipcMain.on('get-all-items', (event) => {
@@ -559,6 +696,7 @@ ipcMain.on('get-all-lists', (event) => {
 });
 
 app.whenReady().then(() => {
+  if (!gotSingleInstanceLock) return; // a second copy: do nothing, it is quitting
   storePath = path.join(app.getPath('userData'), 'eazylyst-data.json');
   loadStore();
 
